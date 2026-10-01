@@ -73,6 +73,21 @@ One run per variant.
 | + `/verify` + LSP (rust-analyzer) | 374 s | 7/7 |
 | + `/verify` + `reasoningEffort: high` | 244 s | 7/7 |
 
+## Reference point: local-model-bench's suite
+
+[tijs/local-model-bench](https://github.com/tijs/local-model-bench) (25 tasks: Hermes tool
+use + Rust/Swift/TypeScript coding, hidden checks) run at `38e917b` against the 27b setup,
+mirroring their Qwen3.8-27B Q5 config except quant, CUDA and the speed stack
+(`results/local-model-bench/`, config + raw rows):
+
+| setup | score | avg decode | total wall |
+|---|:-:|---:|---:|
+| Qwen3.8-27B UD-Q4_K_XL + DFlash2, RTX 5090 | **24/25** | 119.5 tok/s | 15.9 min |
+| their #1 Ornith-1.5-35B-A3B (Mac, Mei 0.6.1) | 24/25 | 15.6 tok/s | 38.5 min |
+| their #2 Qwen3.6-35B-A3B (Mac, Mei 0.6.1) | 24/25 | 16.5 tok/s | 57.4 min |
+
+Same single failure as their leaders (`kiem_mini-testwrite`).
+
 ## Take-aways
 
 - The harness and its instructions moved quality far more than anything else we tried on a

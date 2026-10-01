@@ -1,0 +1,44 @@
+model: unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
+# Contributed run on Linux (WSL2) + RTX 5090, not this repo's Mac. Mirrors
+# gguf-unsloth-ud-q5-64k.yaml (same chat template, sampling, 64K context,
+# reasoning effort) except: Q4_K_XL quant, CUDA build, and the speed stack
+# from github.com/SlipsKnuten/local-harness-results (ngram-mod + DFlash2).
+temperature: 1.0
+reasoning_mode: thinking
+reasoning_effort: medium
+hermes_ops_max_tokens: 16384
+inference_engine: llama.cpp
+
+benchmark_launch_command: |
+  . ~/llama-env.sh && ~/llama.cpp/build/bin/llama-server \
+    -m ~/models/Qwen3.8-27B-UD-Q4_K_XL.gguf \
+    -md ~/models/drafts/Qwen3.8-27B-DFlash2-Q4_K_M.gguf -ngld 99 \
+    --spec-type ngram-mod,draft-dflash --spec-draft-n-max 7 \
+    -ngl 99 -fa on --parallel 1 \
+    --host 127.0.0.1 --port 8017 \
+    --temp 1.0 --top-p 0.95 --top-k 20 --ctx-size 65536 --timeout 1800 \
+    --jinja --chat-template-file configs/Qwen3.8-27B/chat_template.jinja
+
+benchmark_endpoint: http://127.0.0.1:8017/v1
+
+orchestration:
+  raw_port: 8017
+  needs_proxy: false
+  hermes_provider: qwen-cuda5090-q4xl
+  viable: full
+
+settings:
+  - name: hardware / engine
+    value: "RTX 5090 32 GB, Ryzen 7 9800X3D, WSL2 Ubuntu 24.04; llama.cpp 2145525a4 (CUDA 13.2, sm_120)"
+    source: "contributor's machine"
+  - name: quant
+    value: UD-Q4_K_XL (Unsloth Dynamic)
+    source: "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF"
+  - name: speculative decoding
+    value: "ngram-mod first, then DFlash2 draft (z-lab/Qwen3.8-27B-DFlash2-GGUF Q4_K_M), n-max 7"
+    source: "lossless speculative decoding; measured +2-19% generation over MTP on this machine"
+  - name: chat_template / temp / top_p / top_k / context
+    value: "unchanged from gguf-unsloth-ud-q5-64k.yaml"
+    source: "for comparability with this repo's Qwen3.8-27B results"
+
+last_updated: 2026-10-01
