@@ -1,0 +1,26 @@
+{
+ "checks": {
+  "starts": true,
+  "draws_board": true,
+  "moves_left": true,
+  "survives_left_wall": true,
+  "moves_right": true,
+  "survives_right_wall": true,
+  "rotates": true,
+  "survives_rotate_at_wall": true,
+  "gravity": true,
+  "hard_drop": true,
+  "survives_stress": true,
+  "game_over_shown": false,
+  "score_increases": true,
+  "quits": true
+ },
+ "notes": [
+  "score shown at start: 0",
+  "rotate key: z",
+  "max score seen 386, max lines 0",
+  "quit key: q"
+ ],
+ "passed": 13,
+ "total": 14
+}

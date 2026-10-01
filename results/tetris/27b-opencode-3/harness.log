@@ -1,0 +1,721 @@
+[0m
+> build · local
+[0m
+I'll create a Tetris game in Rust with ratatui. Let me first check the current directory.
+[0m$ [0mpwd && ls -la && cargo --version
+/home/gud/bench-harnesses/results/27b-opencode-3
+total 8
+drwxr-xr-x  2 gud gud 4096 Oct  1 10:53 .
+drwxr-xr-x 16 gud gud 4096 Oct  1 10:53 ..
+cargo 1.97.1 (c980f4866 2026-06-30)
+[0m
+Empty directory. Let me set up the project.
+[0m$ [0mcargo init --name tetris && cat Cargo.toml
+Creating binary (application) package
+note: see more `Cargo.toml` keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package]
+name = "tetris"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+[0m
+I'll create the modules. Let me write the Cargo.toml and source files.
+[0m← [0mWrite Cargo.toml
+Wrote file successfully.
+[0m
+[0m← [0mWrite src/piece.rs
+Wrote file successfully.
+[0m
+[0m← [0mWrite src/board.rs
+Wrote file successfully.
+[0m
+[0m← [0mWrite src/game.rs
+Wrote file successfully.
+[0m
+[0m← [0mWrite src/main.rs
+Wrote file successfully.
+[0m
+Now the main file with rendering and the event loop:
+Let me build it.
+[0m$ [0mcargo build 2>&1 | tail -40
+|
+521 |     fn from_rng(rng: &mut impl RngCore) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> src/game.rs:204:26
+    |
+204 |             self.level = self.lines / 10 + 1;
+    |             ----------   ^^^^^^^^^^^^^^^^^^^ expected `u32`, found `u16`
+    |             |
+    |             expected due to the type of this binding
+
+error[E0599]: no variant, associated function, or constant named `ArrowLeft` found for enum `KeyCode` in the current scope
+  --> src/main.rs:83:18
+   |
+83 |         KeyCode::ArrowLeft => game.move_left(),
+   |                  ^^^^^^^^^ variant, associated function, or constant not found in `KeyCode`
+
+error[E0599]: no variant, associated function, or constant named `ArrowRight` found for enum `KeyCode` in the current scope
+  --> src/main.rs:84:18
+   |
+84 |         KeyCode::ArrowRight => game.move_right(),
+   |                  ^^^^^^^^^^ variant, associated function, or constant not found in `KeyCode`
+
+error[E0599]: no variant, associated function, or constant named `ArrowDown` found for enum `KeyCode` in the current scope
+  --> src/main.rs:85:18
+   |
+85 |         KeyCode::ArrowDown => game.soft_drop(),
+   |                  ^^^^^^^^^ variant, associated function, or constant not found in `KeyCode`
+
+error[E0599]: no variant, associated function, or constant named `ArrowUp` found for enum `KeyCode` in the current scope
+  --> src/main.rs:86:18
+   |
+86 |         KeyCode::ArrowUp if is_press => game.rotate(),
+   |                  ^^^^^^^ variant, associated function, or constant not found in `KeyCode`
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.
+warning: `tetris` (bin "tetris") generated 2 warnings
+error: could not compile `tetris` (bin "tetris") due to 8 previous errors; 2 warnings emitted
+[0m
+Two API fixes needed: crossterm uses `Left/Right/Up/Down`, and a type cast. Let me check the full error list first.
+[0m$ [0mcargo build 2>&1 | grep -E "^error" | head -30
+error: expected pattern, found `=`
+error: expected expression, found `)`
+error[E0599]: no associated function or constant named `from_entropy` found for struct `StdRng` in the current scope
+error[E0308]: mismatched types
+error[E0599]: no variant, associated function, or constant named `ArrowLeft` found for enum `KeyCode` in the current scope
+error[E0599]: no variant, associated function, or constant named `ArrowRight` found for enum `KeyCode` in the current scope
+error[E0599]: no variant, associated function, or constant named `ArrowDown` found for enum `KeyCode` in the current scope
+error[E0599]: no variant, associated function, or constant named `ArrowUp` found for enum `KeyCode` in the current scope
+error: could not compile `tetris` (bin "tetris") due to 8 previous errors; 2 warnings emitted
+[0m
+There are syntax errors too. Let me see their locations.
+[0m$ [0mcargo build 2>&1 | grep -A6 "expected pattern\|expected expression" | head -40
+error: expected pattern, found `=`
+   --> src/main.rs:181:13
+    |
+181 |     let box = Block::default()
+    |             ^
+    |
+note: `box` is a reserved keyword
+--
+error: expected expression, found `)`
+   --> src/main.rs:185:64
+    |
+185 |     f.render_widget(Paragraph::new(Text::from(lines)).block(box), rect);
+    |                                                                ^ expected expression
+
+warning: unused imports: `Rng` and `SeedableRng`
+ --> src/game.rs:3:12
+  |
+3 | use rand::{Rng, SeedableRng};
+  |            ^^^  ^^^^^^^^^^^
+[0m
+Found them: `box` is a reserved keyword, and crossterm uses `Left/Right/Up/Down`. Let me fix.
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+@@ -79,12 +79,12 @@
+     }
+     KeyCode::Char('r') if is_press && game.is_game_over => {
+         *game = Game::new();
+     }
+-    KeyCode::ArrowLeft => game.move_left(),
+-    KeyCode::ArrowRight => game.move_right(),
+-    KeyCode::ArrowDown => game.soft_drop(),
+-    KeyCode::ArrowUp if is_press => game.rotate(),
++    KeyCode::Left => game.move_left(),
++    KeyCode::Right => game.move_right(),
++    KeyCode::Down => game.soft_drop(),
++    KeyCode::Up if is_press => game.rotate(),
+     KeyCode::Char(' ') if is_press => game.hard_drop(),
+     _ => {}
+ }
+ true
+
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+@@ -177,13 +177,13 @@
+     let x = area.x + area.width.saturating_sub(width) / 2;
+     let y = area.y + area.height.saturating_sub(height) / 2;
+     let rect = Rect::new(x, y, width, height);
+ 
+-    let box = Block::default()
++    let frame = Block::default()
+         .borders(Borders::ALL)
+         .style(Style::default().bg(Color::Black));
+     f.render_widget(Clear, rect);
+-    f.render_widget(Paragraph::new(Text::from(lines)).block(box), rect);
++    f.render_widget(Paragraph::new(Text::from(lines)).block(frame), rect);
+ }
+ 
+ fn draw_sidebar(f: &mut Frame, game: &Game, area: Rect) {
+     let vchunks = Layout::default()
+
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+@@ -200,9 +200,9 @@
+             4 => 800,
+             _ => 0,
+         };
+         self.score += base * self.level;
+-        self.level = self.lines / 10 + 1;
++        self.level = (self.lines / 10) as u32 + 1;
+     }
+     self.spawn_new_piece();
+ }
+ 
+
+[0m
+Now let me check the rand `from_entropy` situation and rebuild.
+[0m$ [0mcargo build 2>&1 | grep -E "^error|^warning" | head -30
+warning: unused imports: `Rng` and `SeedableRng`
+warning: unused import: `PieceType`
+error[E0599]: no associated function or constant named `from_entropy` found for struct `StdRng` in the current scope
+error[E0716]: temporary value dropped while borrowed
+warning: `tetris` (bin "tetris") generated 2 warnings
+error: could not compile `tetris` (bin "tetris") due to 2 previous errors; 2 warnings emitted
+[0m
+Let me inspect the rand API and find the borrow issue.
+[0m$ [0mgrep -A2 'name = "rand"' Cargo.lock | head; echo "---from_entropy in rand---"; grep -rn "fn from_entropy" ~/.cargo/registry/src/*/rand-0.9*/src/ 2>/dev/null | head
+name = "rand"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+---from_entropy in rand---
+[0m
+[0m$ [0mgrep -rn "from_entropy\|fn seed_from\|FromEntropy" ~/.cargo/registry/src/*/rand-0.9.5/src/rngs/ 2>/dev/null | head; echo "=== trait SeedableRng ==="; sed -n '1,120p' ~/.cargo/registry/src/*/rand-0.9.5/src/rngs/mod.rs 2>/dev/null | grep -n "fn from_entropy\|pub trait SeedableRng\|fn from_seed\|fn from_rng\|fn from_os_rng\|fn gen"
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/xoshiro256plusplus.rs:50:    fn seed_from_u64(mut state: u64) -> Self {
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/xoshiro128plusplus.rs:50:    fn seed_from_u64(mut state: u64) -> Self {
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/small.rs:100:    fn seed_from_u64(state: u64) -> Self {
+=== trait SeedableRng ===
+[0m
+[0m$ [0mgrep -n "pub trait SeedableRng" -A40 ~/.cargo/registry/src/*/rand-0.9.5/src/rngs/mod.rs | grep -n "fn " | head -30
+(no output)
+[0m
+[0m$ [0mgrep -rln "trait SeedableRng" ~/.cargo/registry/src/*/rand-0.9.5/src/; echo "==="; grep -rn "fn from_rng\|fn from_seed\|fn from_entropy\|fn from_os_rng\|fn try_from_os" ~/.cargo/registry/src/*/rand-0.9.5/src/prelude.rs ~/.cargo/registry/src/*/rand-0.9.5/src/rngs/*.rs 2>/dev/null | head
+===
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/small.rs:91:    fn from_seed(seed: Self::Seed) -> Self {
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/std.rs:94:    fn from_seed(seed: Self::Seed) -> Self {
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/xoshiro128plusplus.rs:35:    fn from_seed(seed: [u8; 16]) -> Xoshiro128PlusPlus {
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand-0.9.5/src/rngs/xoshiro256plusplus.rs:35:    fn from_seed(seed: [u8; 32]) -> Xoshiro256PlusPlus {
+[0m
+[0m$ [0mgrep -rln "pub trait SeedableRng" ~/.cargo/registry/src/*/rand-0.9.5/ ; echo "=== methods ==="; f=$(grep -rln "pub trait SeedableRng" ~/.cargo/registry/src/*/rand-0.9.5/ | head -1); grep -n "fn from_rng\|fn from_seed\|fn from_entropy\|fn from_os_rng\|fn seed_from_u64\|fn try_fill_bytes\|-> Self" "$f" | head
+=== methods ===
+grep: : No such file or directory
+[0m
+[0m$ [0mgrep -rln "pub trait SeedableRng" ~/.cargo/registry/src/*/rand_core-*/src/ 2>/dev/null; f=$(grep -rln "pub trait SeedableRng" ~/.cargo/registry/src/*/rand_core-*/src/ 2>/dev/null | head -1); echo "FILE: $f"; grep -n "fn from_rng\|fn from_seed\|fn from_entropy\|fn from_os_rng\|fn seed_from_u64" "$f"
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.10.1/src/seedable_rng.rs
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.5.1/src/lib.rs
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.6.4/src/lib.rs
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.9.5/src/lib.rs
+FILE: /home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rand_core-0.10.1/src/seedable_rng.rs
+61:    ///     fn from_seed(seed: MyRngSeed) -> MyRng {
+93:    fn from_seed(seed: Self::Seed) -> Self;
+109:    fn seed_from_u64(mut state: u64) -> Self {
+147:    fn from_rng<R: Rng + ?Sized>(rng: &mut R) -> Self {
+[0m
+rand 0.9 removed `from_entropy`; I'll seed via `StdRng::from_rng`. Let me fix game.rs.
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+@@ -37,9 +37,9 @@
+     lines: 0,
+     is_paused: false,
+     is_game_over: false,
+     bag: Vec::new(),
+-    rng: StdRng::from_entropy(),
++    rng: StdRng::from_rng(&mut rand::rng()),
+ };
+ game.next = game.next_from_bag();
+ game.spawn_new_piece();
+ game
+
+[0m
+Now fix the temporary-borrow error in the overlay function.
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+@@ -156,10 +156,11 @@
+     }
+ }
+ 
+ fn render_centered_overlay(f: &mut Frame, area: Rect, game: &Game) {
++    let score_line = format!("Score: {}", game.score);
+     let content: Vec<&str> = if game.is_game_over {
+-        vec!["GAME OVER", &format!("Score: {}", game.score), "", "Press 'r' to restart"]
++        vec!["GAME OVER", &score_line, "", "Press 'r' to restart"]
+     } else {
+         vec!["PAUSED", "", "Press 'p' to resume"]
+     };
+     let lines: Vec<Line> = content
+
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+@@ -19,9 +19,9 @@
+ use std::time::Duration;
+ 
+ use crate::board::{Cell, HEIGHT, WIDTH};
+ use crate::game::Game;
+-use crate::piece::{PieceType, SHAPES};
++use crate::piece::SHAPES;
+ 
+ fn main() -> io::Result<()> {
+     enable_raw_mode()?;
+     let mut stdout = io::stdout();
+
+[0m
+[0m$ [0mcargo build 2>&1 | grep -E "^error|^warning" | head -30; echo "=== exit ==="; cargo build 2>&1 | tail -3
+warning: unused import: `Rng`
+warning: `tetris` (bin "tetris") generated 1 warning (run `cargo fix --bin "tetris" -p tetris` to apply 1 suggestion)
+=== exit ===
+
+warning: `tetris` (bin "tetris") generated 1 warning (run `cargo fix --bin "tetris" -p tetris` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s
+[0m
+`shuffle` comes from `SliceRandom`, not `Rng`. Let me clean up the import.
+[0m→ [0mRead src/game.rs[90m [limit=6][0m
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+@@ -1,7 +1,7 @@
+ use rand::rngs::StdRng;
+ use rand::seq::SliceRandom;
+-use rand::{Rng, SeedableRng};
++use rand::SeedableRng;
+ use std::time::Duration;
+ 
+ use crate::board::{Board, WIDTH};
+ use crate::piece::{Piece, PieceType};
+
+[0m
+[0m$ [0mcargo build 2>&1 | tail -5
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b-opencode-3)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.37s
+[0m
+Clean build. Let me add unit tests to verify the core game logic (collision, line clearing, rotation, hard drop).
+[0m→ [0mRead src/board.rs[90m [offset=80][0m
+[0m
+[0m← [0mEdit src/board.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
+@@ -87,4 +87,59 @@
+         }
+         cleared
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::piece::Piece;
++
++    #[test]
++    fn line_clear_shifts_rows_down() {
++        let mut board = Board::new();
++        // Fill the bottom row completely.
++        for x in 0..WIDTH {
++            board.grid[Board::index(x, HEIGHT - 1).unwrap()] = Cell::Filled(PieceType::L);
++        }
++        // Put a marker in the row above.
++        board.grid[Board::index(3, HEIGHT - 2).unwrap()] = Cell::Filled(PieceType::T);
++
++        assert_eq!(board.clear_lines(), 1);
++        // Marker should have dropped one row.
++        assert!(matches!(board.get(3, HEIGHT - 1), Cell::Filled(PieceType::T)));
++        assert!(matches!(board.get(3, HEIGHT - 2), Cell::Empty));
++    }
++
++    #[test]
++    fn detects_collision_with_wall_and_piece() {
++        let mut board = Board::new();
++        let mut piece = Piece {
++            piece_type: PieceType::O,
++            x: 0,
++            y: 0,
++            rotation: 0,
++        };
++        assert!(board.is_valid_position(&piece));
++
++        // Slide fully off the left wall -> invalid.
++        piece.x = -4;
++        assert!(!board.is_valid_position(&piece));
++
++        // Drop a filled cell under the piece -> invalid.
++        piece = Piece {
++            piece_type: PieceType::O,
++            x: 3,
++            y: HEIGHT - 4,
++            rotation: 0,
++        };
++        board.grid[Board::index(4, HEIGHT - 1).unwrap()] = Cell::Filled(PieceType::I);
++        assert!(!board.is_valid_position(&piece));
++    }
++
++    #[test]
++    fn out_of_bounds_reads_as_empty() {
++        let board = Board::new();
++        assert!(matches!(board.get(5, -3), Cell::Empty));
++        assert!(matches!(board.get(99, 5), Cell::Empty));
++    }
++}
+
+[0m
+[0m→ [0mRead src/game.rs[90m [offset=195][0m
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+@@ -211,4 +211,65 @@
+         let ms = (1000 - (self.level - 1) * 90).max(80);
+         Duration::from_millis(ms as u64)
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    fn filled_count(game: &Game) -> usize {
++        let mut n = 0;
++        for y in 0..crate::board::HEIGHT {
++            for x in 0..crate::board::WIDTH {
++                if matches!(game.board.get(x, y), crate::board::Cell::Filled(_)) {
++                    n += 1;
++                }
++            }
++        }
++        n
++    }
++
++    #[test]
++    fn new_game_spawns_a_valid_piece() {
++        let game = Game::new();
++        assert!(!game.is_game_over);
++        assert!(game.board.is_valid_position(&game.current));
++        assert_eq!(filled_count(&game), 0);
++    }
++
++    #[test]
++    fn hard_drop_locks_piece_and_scores() {
++        let mut game = Game::new();
++        let before = filled_count(&game);
++        let score_before = game.score;
++        game.hard_drop();
++        // A single piece lays down exactly four cells and cannot clear a line.
++        assert_eq!(filled_count(&game), before + 4);
++        assert!(game.score >= score_before);
++        assert!(game.board.is_valid_position(&game.current));
++    }
++
++    #[test]
++    fn rotate_changes_orientation() {
++        let mut game = Game::new();
++        // Spin until we get a non-O piece for a meaningful rotation change.
++        let start = game.current.rotation;
++        game.rotate();
++        // Rotation should wrap within 0..4 and the piece must remain valid.
++        assert!(game.current.rotation < 4);
++        assert!(game.board.is_valid_position(&game.current));
++        assert!(start != game.current.rotation || game.current.piece_type == PieceType::O);
++    }
++
++    #[test]
++    fn gravity_eventually_locks_pieces() {
++        let mut game = Game::new();
++        for _ in 0..2000 {
++            game.tick();
++            if game.is_game_over {
++                break;
++            }
++        }
++        assert!(filled_count(&game) > 0);
++    }
++}
+
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/game.rs
+@@ -251,15 +251,14 @@
+ 
+ #[test]
+ fn rotate_changes_orientation() {
+     let mut game = Game::new();
+-    // Spin until we get a non-O piece for a meaningful rotation change.
+     let start = game.current.rotation;
+     game.rotate();
+-    // Rotation should wrap within 0..4 and the piece must remain valid.
++    // At spawn on an empty board a rotation must succeed and stay valid.
++    assert_ne!(game.current.rotation, start);
+     assert!(game.current.rotation < 4);
+     assert!(game.board.is_valid_position(&game.current));
+-    assert!(start != game.current.rotation || game.current.piece_type == PieceType::O);
+ }
+ 
+ #[test]
+ fn gravity_eventually_locks_pieces() {
+
+[0m
+Now let me run the tests.
+[0m$ [0mcargo test 2>&1 | tail -30
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b-opencode-3)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.41s
+     Running unittests src/main.rs (target/debug/deps/tetris-981987eecf83cc74)
+
+running 7 tests
+test board::tests::detects_collision_with_wall_and_piece ... FAILED
+test board::tests::line_clear_shifts_rows_down ... ok
+test board::tests::out_of_bounds_reads_as_empty ... ok
+test game::tests::gravity_eventually_locks_pieces ... ok
+test game::tests::new_game_spawns_a_valid_piece ... ok
+test game::tests::hard_drop_locks_piece_and_scores ... ok
+test game::tests::rotate_changes_orientation ... ok
+
+failures:
+
+---- board::tests::detects_collision_with_wall_and_piece stdout ----
+
+thread 'board::tests::detects_collision_with_wall_and_piece' (18571) panicked at src/board.rs:136:9:
+assertion failed: !board.is_valid_position(&piece)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    board::tests::detects_collision_with_wall_and_piece
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--bin tetris`
+[0m
+The wall test is correct, but my collision-cell placement didn't actually overlap the piece. Let me fix the test.
+[0m← [0mEdit src/board.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
+@@ -124,16 +124,17 @@
+     // Slide fully off the left wall -> invalid.
+     piece.x = -4;
+     assert!(!board.is_valid_position(&piece));
+ 
+-    // Drop a filled cell under the piece -> invalid.
++    // A filled cell occupying one of the piece's cells -> invalid.
+     piece = Piece {
+         piece_type: PieceType::O,
+         x: 3,
+-        y: HEIGHT - 4,
++        y: 5,
+         rotation: 0,
+     };
+-    board.grid[Board::index(4, HEIGHT - 1).unwrap()] = Cell::Filled(PieceType::I);
++    assert!(board.is_valid_position(&piece));
++    board.grid[Board::index(4, 6).unwrap()] = Cell::Filled(PieceType::I);
+     assert!(!board.is_valid_position(&piece));
+ }
+ 
+ #[test]
+
+[0m
+[0m$ [0mcargo test 2>&1 | tail -15
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b-opencode-3)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.34s
+     Running unittests src/main.rs (target/debug/deps/tetris-981987eecf83cc74)
+
+running 7 tests
+test board::tests::detects_collision_with_wall_and_piece ... ok
+test board::tests::line_clear_shifts_rows_down ... ok
+test board::tests::out_of_bounds_reads_as_empty ... ok
+test game::tests::gravity_eventually_locks_pieces ... ok
+test game::tests::hard_drop_locks_piece_and_scores ... ok
+test game::tests::new_game_spawns_a_valid_piece ... ok
+test game::tests::rotate_changes_orientation ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+[0m
+All 7 tests pass. Let me run clippy to catch any lint issues.
+[0m$ [0mcargo clippy 2>&1 | tail -25 || echo "clippy not available"
+|
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_range_contains
+
+warning: this `if` has identical blocks
+   --> src/main.rs:116:61
+    |
+116 |               let symbol = if current_cells.contains(&(x, y)) {
+    |  _____________________________________________________________^
+117 | |                 "██"
+118 | |             } else if matches!(game.board.get(x, y), Cell::Filled(_)) {
+    | |_____________^
+    |
+note: same as this
+   --> src/main.rs:118:71
+    |
+118 |               } else if matches!(game.board.get(x, y), Cell::Filled(_)) {
+    |  _______________________________________________________________________^
+119 | |                 "██"
+120 | |             } else if ghost_cells.contains(&(x, y)) {
+    | |_____________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#if_same_then_else
+    = note: `#[warn(clippy::if_same_then_else)]` on by default
+
+warning: `tetris` (bin "tetris") generated 4 warnings (run `cargo clippy --fix --bin "tetris" -p tetris -- ` to apply 3 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.00s
+[0m
+[0m$ [0mcargo clippy 2>&1 | grep -E "warning:|--> src" | head -30
+warning: manual `!Range::contains` implementation
+  --> src/board.rs:27:35
+warning: manual `!Range::contains` implementation
+  --> src/board.rs:27:12
+warning: manual `!Range::contains` implementation
+  --> src/board.rs:46:16
+warning: this `if` has identical blocks
+   --> src/main.rs:116:61
+   --> src/main.rs:118:71
+warning: `tetris` (bin "tetris") generated 4 warnings (run `cargo clippy --fix --bin "tetris" -p tetris -- ` to apply 3 suggestions)
+[0m
+Let me fix the clippy warnings. First the board range checks.
+[0m← [0mEdit src/board.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
+@@ -23,9 +23,9 @@
+     }
+ }
+ 
+ fn index(x: i16, y: i16) -> Option<usize> {
+-    if x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT {
++    if !(0..WIDTH).contains(&x) || !(0..HEIGHT).contains(&y) {
+         return None;
+     }
+     Some((y * WIDTH + x) as usize)
+ }
+
+[0m
+[0m← [0mEdit src/board.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/board.rs
+@@ -42,9 +42,9 @@
+ /// Whether `piece` fits at its current position without overlapping the
+ /// walls, the floor, or any locked cell.
+ pub fn is_valid_position(&self, piece: &Piece) -> bool {
+     for (cx, cy) in piece.absolute_cells() {
+-        if cx < 0 || cx >= WIDTH || cy >= HEIGHT {
++        if !(0..WIDTH).contains(&cx) || cy >= HEIGHT {
+             return false;
+         }
+         if cy >= 0 && matches!(self.get(cx, cy), Cell::Filled(_)) {
+             return false;
+
+[0m
+Now the main.rs inner loop. Let me read it to get exact text.
+[0m→ [0mRead src/main.rs[90m [offset=105, limit=40][0m
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-3/src/main.rs
+@@ -112,24 +112,25 @@
+ let mut lines = Vec::with_capacity(HEIGHT as usize);
+ for y in 0..HEIGHT {
+     let mut spans = Vec::with_capacity(WIDTH as usize);
+     for x in 0..WIDTH {
+-        let symbol = if current_cells.contains(&(x, y)) {
++        let is_current = current_cells.contains(&(x, y));
++        let is_ghost = ghost_cells.contains(&(x, y));
++
++        let symbol = if is_current || matches!(game.board.get(x, y), Cell::Filled(_)) {
+             "██"
+-        } else if matches!(game.board.get(x, y), Cell::Filled(_)) {
+-            "██"
+-        } else if ghost_cells.contains(&(x, y)) {
++        } else if is_ghost {
+             "□□"
+         } else {
+             "  "
+         };
+-        let style = if current_cells.contains(&(x, y)) {
++        let style = if is_current {
+             Style::default()
+                 .fg(game.current.piece_type.color())
+                 .add_modifier(Modifier::BOLD)
+         } else if let Cell::Filled(pt) = game.board.get(x, y) {
+             Style::default().fg(pt.color())
+-        } else if ghost_cells.contains(&(x, y)) {
++        } else if is_ghost {
+             Style::default().fg(Color::DarkGray)
+         } else {
+             Style::default()
+         };
+
+[0m
+Let me verify everything is clean now.
+[0m$ [0mcargo clippy 2>&1 | grep -E "warning:|error" | head -20; echo "=== clippy done ==="; cargo test 2>&1 | tail -4
+=== clippy done ===
+test game::tests::new_game_spawns_a_valid_piece ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+[0m
+Clippy is clean and all tests pass. Let me do a final build check and review the structure.
+[0m$ [0mcargo build 2>&1 | tail -3; echo "=== tree ==="; find . -name target -prune -o -type f -name "*.rs" -print; echo "=== line counts ==="; wc -l src/*.rs
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b-opencode-3)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.38s
+=== tree ===
+./src/piece.rs
+./src/game.rs
+./src/board.rs
+./src/main.rs
+=== line counts ===
+  146 src/board.rs
+  274 src/game.rs
+  238 src/main.rs
+  118 src/piece.rs
+  776 total
+[0m
+Done. Tetris builds clean (no warnings, clippy clean) with 7 passing unit tests.
+
+**Structure**
+- `src/piece.rs` — 7 tetrominoes with 4 rotations each, colors
+- `src/board.rs` — 10×20 grid, collision + line clearing
+- `src/game.rs` — state, 7-bag randomizer, gravity/rotation/scoring, speed-per-level
+- `src/main.rs` — terminal loop, input, ratatui rendering (board, ghost piece, next piece, score/level/lines)
+
+**Run:** `cargo run`
+
+**Controls:** ←/→ move · ↑ rotate · ↓ soft drop · Space hard drop · p pause · r restart (on game over) · q quit
+
+Features: ghost landing preview, 7-bag piece randomizer, soft/hard drop scoring, line-clear scoring (100/300/500/800 × level), level-up every 10 lines with increasing fall speed, pause + game-over overlays.
+
+Note: it's an interactive TUI, so it needs a real terminal to play (I verified logic via the test suite since there's no TTY here).

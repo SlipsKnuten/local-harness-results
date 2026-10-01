@@ -1,0 +1,182 @@
+[0m
+> build · local
+[0m
+[0m$ [0mls -la
+total 8
+drwxr-xr-x 2 gud gud 4096 Oct  1 01:32 .
+drwxr-xr-x 7 gud gud 4096 Oct  1 01:32 ..
+[0m
+[0m$ [0mcargo init --name tetris . 2>&1 | head -20
+Creating binary (application) package
+note: see more `Cargo.toml` keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[0m
+[0m→ [0mRead Cargo.toml
+[0m
+[0m← [0mWrite Cargo.toml
+Wrote file successfully.
+[0m
+[0m← [0mWrite src/main.rs
+Wrote file successfully.
+[0m
+[0m← [0mEdit Cargo.toml
+Index: /home/gud/bench-harnesses/results/27b-opencode-2/Cargo.toml
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-2/Cargo.toml
++++ /home/gud/bench-harnesses/results/27b-opencode-2/Cargo.toml
+@@ -5,7 +5,8 @@
+ 
+ [dependencies]
+ ratatui = "0.29"
+ crossterm = "0.28"
++rand = "0.9"
+ 
+ [profile.release]
+ opt-level = 3
+
+[0m
+[0m$ [0mcargo build 2>&1 | tail -60
+--> src/main.rs:399:7
+    |
+399 |     p.render(f, area);
+    |       ^^^^^^ -  ---- argument #2 of type `&mut Buffer` is missing
+    |              |
+    |              unexpected argument #1 of type `&mut Frame<'_>`
+    |
+note: method defined here
+   --> /home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-0.29.0/src/widgets.rs:117:8
+    |
+117 |     fn render(self, area: Rect, buf: &mut Buffer)
+    |        ^^^^^^
+help: did you mean
+    |
+399 -     p.render(f, area);
+399 +     p.render(area, /* &mut Buffer */);
+    |
+
+error[E0308]: mismatched types
+   --> src/main.rs:459:45
+    |
+459 | ...rls[1].inner(Rect { x: 1, y: 1, width: ctrls[1].width.saturating_sub(2), height: ctrls[1].height.saturating_sub(2) }), );
+    |           ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Margin`, found `Rect`
+    |           |
+    |           arguments to this method are incorrect
+    |
+note: method defined here
+   --> /home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-0.29.0/src/layout/rect.rs:132:18
+    |
+132 |     pub const fn inner(self, margin: Margin) -> Self {
+    |                  ^^^^^
+
+error[E0599]: no variant, associated function, or constant named `ArrowLeft` found for enum `KeyCode` in the current scope
+   --> src/main.rs:500:51
+    |
+500 |                     KeyCode::Char('c') | KeyCode::ArrowLeft if !game.try_move(-1, 0) => {}
+    |                                                   ^^^^^^^^^ variant, associated function, or constant not found in `KeyCode`
+
+error[E0599]: no variant, associated function, or constant named `ArrowRight` found for enum `KeyCode` in the current scope
+   --> src/main.rs:501:51
+    |
+501 |                     KeyCode::Char('v') | KeyCode::ArrowRight if !game.try_move(1, 0) => {}
+    |                                                   ^^^^^^^^^^ variant, associated function, or constant not found in `KeyCode`
+
+error[E0599]: no variant, associated function, or constant named `ArrowUp` found for enum `KeyCode` in the current scope
+   --> src/main.rs:502:51
+    |
+502 |                     KeyCode::Char('x') | KeyCode::ArrowUp => game.try_rotate(1),
+    |                                                   ^^^^^^^ variant, associated function, or constant not found in `KeyCode`
+
+error[E0599]: no variant, associated function, or constant named `ArrowDown` found for enum `KeyCode` in the current scope
+   --> src/main.rs:504:30
+    |
+504 |                     KeyCode::ArrowDown => {
+    |                              ^^^^^^^^^ variant, associated function, or constant not found in `KeyCode`
+
+Some errors have detailed explanations: E0277, E0308, E0599, E0601.
+For more information about an error, try `rustc --explain E0277`.
+warning: `tetris` (bin "tetris") generated 4 warnings
+error: could not compile `tetris` (bin "tetris") due to 31 previous errors; 4 warnings emitted
+[0m
+[0m$ [0mls /home/gud/.cargo/registry/src/index.crates.io-*/ratatui-0.29.0/src/
+backend
+backend.rs
+buffer
+buffer.rs
+layout
+layout.rs
+lib.rs
+prelude.rs
+style
+style.rs
+symbols
+symbols.rs
+terminal
+terminal.rs
+text
+text.rs
+widgets
+widgets.rs
+[0m
+[0m$ [0mgrep -n "pub fn" /home/gud/.cargo/registry/src/index.crates.io-*/ratatui-0.29.0/src/terminal/frame.rs | head -40; echo "---KEYCODE---"; grep -n "Left\|Right\|Up\|Down\|Arrow" /home/gud/.cargo/registry/src/index.crates.io-*/crossterm-0.28*/src/event.rs | head
+95:    pub fn render_widget<W: Widget>(&mut self, widget: W, area: Rect) {
+121:    pub fn render_widget_ref<W: WidgetRef>(&mut self, widget: W, area: Rect) {
+152:    pub fn render_stateful_widget<W>(&mut self, widget: W, area: Rect, state: &mut W::State)
+189:    pub fn render_stateful_widget_ref<W>(&mut self, widget: W, area: Rect, state: &mut W::State)
+206:    pub fn set_cursor_position<P: Into<Position>>(&mut self, position: P) {
+221:    pub fn set_cursor(&mut self, x: u16, y: u16) {
+226:    pub fn buffer_mut(&mut self) -> &mut Buffer {
+---KEYCODE---
+572:/// `MouseEventKind::Up` and `MouseEventKind::Drag` events. `MouseButton::Left`
+600:/// `MouseEventKind::Up` and `MouseEventKind::Drag` events. `MouseButton::Left`
+606:    Down(MouseButton),
+608:    Up(MouseButton),
+614:    ScrollDown,
+616:    ScrollUp,
+618:    ScrollLeft,
+620:    ScrollRight,
+627:    /// Left mouse button.
+628:    Left,
+[0m
+[0m$ [0mgrep -n "Left\|Right\|Up\|Down\|Esc\|Enter" /home/gud/.cargo/registry/src/index.crates.io-*/crossterm-0.28*/src/event/key.rs 2>/dev/null | head -30 || grep -rn "pub enum KeyCode" /home/gud/.cargo/registry/src/index.crates.io-*/crossterm-0.28*/src/
+(no output)
+[0m
+[0m$ [0mgrep -rln "enum KeyCode" /home/gud/.cargo/registry/src/index.crates.io-*/crossterm-0.28*/src/
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossterm-0.28.1/src/event.rs
+[0m
+[0m$ [0mgrep -n "Left\b\|Right\b\|Up\b\|Down\b\|Esc\b\|ArrowLeft\|ArrowRight" /home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossterm-0.28.1/src/event.rs | head -30
+572:/// `MouseEventKind::Up` and `MouseEventKind::Drag` events. `MouseButton::Left`
+600:/// `MouseEventKind::Up` and `MouseEventKind::Drag` events. `MouseButton::Left`
+606:    Down(MouseButton),
+608:    Up(MouseButton),
+614:    ScrollDown,
+616:    ScrollUp,
+618:    ScrollLeft,
+620:    ScrollRight,
+627:    /// Left mouse button.
+628:    Left,
+629:    /// Right mouse button.
+630:    Right,
+916:    /// Left Shift key.
+918:    /// Left Control key. (Control on macOS, Ctrl on other platforms)
+920:    /// Left Alt key. (Option on macOS, Alt on other platforms)
+922:    /// Left Super key. (Command on macOS, Windows on Windows, Super on other platforms)
+924:    /// Left Hyper key.
+926:    /// Left Meta key.
+928:    /// Right Shift key.
+930:    /// Right Control key. (Control on macOS, Ctrl on other platforms)
+932:    /// Right Alt key. (Option on macOS, Alt on other platforms)
+934:    /// Right Super key. (Command on macOS, Windows on Windows, Super on other platforms)
+936:    /// Right Hyper key.
+938:    /// Right Meta key.
+962:            ModifierKeyCode::LeftShift => write!(f, "Left Shift"),
+963:            ModifierKeyCode::LeftHyper => write!(f, "Left Hyper"),
+964:            ModifierKeyCode::LeftMeta => write!(f, "Left Meta"),
+965:            ModifierKeyCode::RightShift => write!(f, "Right Shift"),
+966:            ModifierKeyCode::RightHyper => write!(f, "Right Hyper"),
+967:            ModifierKeyCode::RightMeta => write!(f, "Right Meta"),
+[0m
+[0m$ [0mgrep -n "pub enum KeyCode" /home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossterm-0.28.1/src/event.rs
+1011:pub enum KeyCode {
+[0m
+[93m[1m! [0mpermission requested: external_directory (/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossterm-0.28.1/src/*); auto-rejecting
+[0m✗ [0mRead /home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crossterm-0.28.1/src/event.rs failed[90m [offset=1011, limit=80][0m
+[91m[1mError: [0mThe user rejected permission to use this specific tool call.

@@ -1,0 +1,41 @@
+Done. I built a complete, working terminal Tetris in Rust using **ratatui** + **crossterm**.
+
+## What's in the project
+
+```
+Cargo.toml      ratatui 0.29, crossterm 0.28
+src/
+  piece.rs      7 tetrominoes, computed rotation states, per-piece colors
+  board.rs      10×20 grid, collision, locking, line clearing
+  game.rs       state, spawning, movement, gravity, scoring, game over
+  main.rs       terminal setup, input loop, ratatui rendering + tests
+README.md       build/run/controls docs
+```
+
+## How it works
+- **Pieces/rotation** — each tetromino's 4 rotation states are derived from its base shape by the standard `(x,y)→(-y,x)` 90° transform + re-normalization (sorted for canonical order), so no hand-typed rotations.
+- **Game loop** — event polling with a timeout matched to the gravity tick, so pieces keep falling smoothly even with no keypresses. Speed scales with level.
+- **Rendering** — left panel is the bordered board (active piece overlaid on locked cells, colored per piece); right panel shows the NEXT preview, score/lines/level, and the control list. Pause and game-over overlays included.
+
+## Controls
+`←/a`, `→/d` move · `↓/s` soft drop · `↑/x/w` rotate CW · `z` rotate CCW · `space` hard drop · `p` pause · `r` restart · `q`/`Esc` quit
+
+## Verification
+- `cargo clippy --all-targets` — **no warnings**
+- `cargo test` — **7 tests pass** (rendering, line clearing, wall/rotation rules, scoring, top-out, pause, rotation consistency)
+- `cargo build --release` — clean, ~985 KB binary; smoke-tested that it launches, handles input, and restores the terminal on exit (exit 0)
+
+A rendered frame from the test backend looks like:
+```
+┌ TETRIS ────────────┐┌ INFO ────────────────┐
+│                    ││NEXT                  │
+│      ██████        ││  ██                  │
+│                    ││██████                │
+│          ██        ││Score: 162            │
+│      ██████        ││Level: 1              │
+│      ████          ││←/a  move left        │
+...                  ││space hard drop       │
+└────────────────────┘└──────────────────────┘
+```
+
+Run it with `cargo run --release`.

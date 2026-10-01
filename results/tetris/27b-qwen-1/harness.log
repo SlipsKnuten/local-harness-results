@@ -1,0 +1,38 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Configure tools.executionSandbox on Linux or a supported legacy sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Retrying provider attempt (0 buffered tool call(s) discarded).
+Done. I built a complete, working terminal Tetris in Rust with ratatui + crossterm.
+
+## What was built
+
+A full Tetris game in `/home/gud/bench-harnesses/results/27b-qwen-1/`, split into focused modules (~1,280 lines including tests):
+
+| File | Responsibility |
+|------|----------------|
+| `src/main.rs` | Terminal lifecycle + event/gravity loop |
+| `src/game.rs` | State machine, movement, rotation + wall kicks, locking, scoring, levels |
+| `src/tetromino.rs` | 7 pieces, SRS-style rotation, colours |
+| `src/board.rs` | 10×20 field, collision, line clearing |
+| `src/input.rs` | Key → action mapping |
+| `src/ui.rs` | ratatui rendering (mosaic board, panels, overlays) |
+
+**Features:** 7-bag randomizer, ghost piece, hold slot, next-3 preview, classic scoring (100/300/500/800 × level), level-based speed-up, persistent high score (`~/.tetris-rs-highscore`), pause/restart, coloured UI.
+
+**Controls:** `←/→` move, `↓` soft drop, `Space` hard drop, `↑`/`X` rotate, `Z` rotate ⟲, `C` hold, `P` pause, `R` restart, `Q`/`Esc` quit.
+
+## Run it
+
+```sh
+cd /home/gud/bench-harnesses/results/27b-qwen-1
+cargo run --release
+```
+
+## Verification (all passing)
+
+- **`cargo test`** — 22/22 unit tests: rotation correctness/uniqueness, line-clear + shift, scoring for single/double/tetris clears, gravity/level clamp, wall collision, hold rules, game-over paths, and 3 render tests (using ratatui's `TestBackend`) asserting the title, panels, active piece, and pause/game-over overlays actually draw.
+- **`cargo clippy --all-targets -- -D warnings`** — clean.
+- **Release build** — succeeds.
+- **End-to-end PTY smoke test** — launched the real binary under a pseudo-TTY: it entered the alternate screen, hid the cursor, and drew frames; when fed `q` it read the key, triggered quit, and left the alternate screen / restored the cursor with **exit code 0** (clean shutdown, no panic).
+
+One note on the headless smoke test: `script` reports a small PTY size, so the visible text was sparse in the capture — that's a terminal-size artifact of the environment, not a bug; the render unit tests are the authoritative check of the drawn content. If you'd like, I can tune the layout, add a DAS/auto-repeat timing model for held keys, or add a "combo" scoring mode.
+/home/gud/bench-harnesses/run-harness.sh: line 32: syntax error near unexpected token `;;'
+/home/gud/bench-harnesses/run-harness.sh: line 32: `ermes chat --oneshot -Q --yolo --source tool -q "$prompt" ;;'

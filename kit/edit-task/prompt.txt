@@ -1,0 +1,7 @@
+In this project (tally, a todo CLI):
+1. `tally done <id>` crashes when the id doesn't exist. It should print `no task #<id>` to stderr and exit with status 1.
+2. Add `tally edit <id> [--title <text>] [--due <YYYY-MM-DD>]` that changes those fields and prints `edited #<id>` (same error as `done` for an unknown id).
+3. Add `tally rm <id>` that deletes a task and prints `removed #<id>`. Ids must never be reused after a delete.
+4. Add `tally list --overdue`: only open tasks whose due date is before today. Today is the current date, or `$TALLY_TODAY` (YYYY-MM-DD) if that is set.
+5. Add `tally stats` that prints exactly `open: N, done: M, overdue: K`.
+Keep the existing commands and output formats working as they are, including task files written by the current version.

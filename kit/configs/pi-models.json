@@ -1,0 +1,11 @@
+{
+  "providers": {
+    "local": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "<YOUR_KEY>",
+      "compat": { "supportsDeveloperRole": false },
+      "models": [ { "id": "local", "reasoning": true, "contextWindow": 262144, "maxTokens": 32768 } ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "security": {
+    "auth": {
+      "selectedType": "openai"
+    }
+  },
+  "model": {
+    "name": "local"
+  },
+  "$version": 4
+}

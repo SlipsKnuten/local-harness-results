@@ -1,0 +1,10 @@
+model = "local"
+model_provider = "local"
+model_reasoning_effort = "medium"
+model_context_window = 262144
+
+[model_providers.local]
+name = "local llama-server"
+base_url = "http://127.0.0.1:8080/v1"
+env_key = "LLAMA_API_KEY"
+wire_api = "responses"

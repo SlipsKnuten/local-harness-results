@@ -1,0 +1,31 @@
+
+session_id: 20261001_120240_8d4e7f
+Done. Tetris is built, working, and fully verified.
+
+What's in place:
+- Cargo.toml — ratatui 0.30.2 + crossterm 0.29.0
+- src/board.rs — 10x20 grid, collision checks, line clearing
+- src/tetromino.rs — all 7 SRS rotation states, spawn positions
+- src/rng.rs — small xorshift PRNG + 7-bag shuffle (no deps)
+- src/game.rs — gravity, movement, wall-kick rotation, soft/hard drop, scoring, levels, 7-bag randomizer
+- src/ui.rs — ratatui rendering: play field, live piece, next preview, score/lines/level panel, control hints
+- src/main.rs — terminal setup, raw-mode event loop, game over handling, pause
+
+Verified by actually running it in tmux:
+- Field, live piece, next-piece preview, and info panel all render correctly (T piece shown, O next)
+- ←/→ moved the piece, ↑ rotated it, space hard-dropped it into the bottom-right, a fresh piece spawned, score updated to 10
+- q quit cleanly and the terminal was restored
+
+Quality gates (all green):
+- cargo build: zero errors, zero warnings
+- cargo clippy --all-targets: zero warnings
+- cargo fmt --check: clean
+- cargo test: 25/25 pass
+
+Bugs caught and fixed along the way (tests + running it surfaced these):
+- clear_lines() was writing survivors to the top instead of dropping them to the bottom — rewrote to fill from the floor up
+- drop_interval_ms() would underflow-panic at high levels — switched to saturating arithmetic
+- The "next" preview and the field overlay both assumed pieces lived near the origin; a piece at a high column indexed spans out of bounds and panicked mid-game — rewrote the preview to be bounding-box-relative and fixed the overlay index (added a regression test for a wall-hugging piece)
+- The 20-row field border was stretching to the terminal's full height; re-anchored it top-aligned with the panel for a proper look
+
+To play: cd /home/gud/bench-harnesses/results/27b+rules-hermes-2 && cargo run --release (optionally pass a u64 seed as the first arg for reproducible piece order). Controls: ←/→ move, ↑/x rotate, ↓ soft drop, space hard drop, p pause, q/esc quit.

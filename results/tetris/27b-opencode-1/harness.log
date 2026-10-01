@@ -1,0 +1,244 @@
+[0m
+> build · local
+[0m
+[0m$ [0mls -la
+total 8
+drwxr-xr-x 2 gud gud 4096 Oct  1 00:14 .
+drwxr-xr-x 3 gud gud 4096 Oct  1 00:14 ..
+[0m
+[0m$ [0mcargo --version && rustc --version
+cargo 1.97.1 (c980f4866 2026-06-30)
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+[0m
+[0m$ [0mcargo init --name tetris .
+Creating binary (application) package
+note: see more `Cargo.toml` keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[0m
+[0m← [0mWrite Cargo.toml
+Wrote file successfully.
+[0m
+[0m← [0mWrite src/main.rs
+Wrote file successfully.
+[0m
+[0m$ [0mcargo build 2>&1 | tail -80
+error[E0308]: mismatched types
+   --> src/main.rs:415:9
+    |
+415 |     for &(dx, dy) in shape {
+    |         ^^^^^^^^^    ----- this is an iterator with items of type `(i32, i32)`
+    |         |
+    |         expected `(i32, i32)`, found `&_`
+    |
+    = note:  expected tuple `(i32, i32)`
+            found reference `&_`
+
+error[E0277]: the trait bound `Line<'_>: From<Map<Iter<'_, &str>, {closure@main.rs:422:32}>>` is not satisfied
+   --> src/main.rs:421:13
+    |
+421 |             Line::from(
+    |             ^^^^ unsatisfied trait bound
+    |
+    = help: the trait `From<std::iter::Map<std::slice::Iter<'_, &str>, {closure@src/main.rs:422:32: 422:35}>>` is not implemented for `ratatui::prelude::Line<'_>`
+    = help: `ratatui::prelude::Line<'_>` implements trait `From<T>`:
+              From<&str>
+              From<Cow<'_, str>>
+              From<Span<'_>>
+              From<String>
+              From<Vec<Span<'_>>>
+    = note: the full name for the type has been written to '/home/gud/bench-harnesses/results/27b-opencode-1/target/debug/deps/tetris-b337a57616b9662d.long-type-105995033166414711.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0599]: the method `by_ref` exists for mutable reference `&mut impl ratatui::backend::Backend<Error = io::Error> + Send`, but its trait bounds were not satisfied
+   --> src/main.rs:493:5
+    |
+493 |     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+    = note: the following trait bounds were not satisfied:
+            `impl ratatui::backend::Backend<Error = io::Error> + Send: std::io::Write`
+            which is required by `&mut impl ratatui::backend::Backend<Error = io::Error> + Send: std::io::Write`
+            `impl ratatui::backend::Backend<Error = io::Error> + Send: Iterator`
+            which is required by `&mut impl ratatui::backend::Backend<Error = io::Error> + Send: Iterator`
+    = help: items from traits can only be used if the type parameter is bounded by the trait
+    = note: this error originates in the macro `$crate::queue` which comes from the expansion of the macro `execute` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: the following traits define an item `by_ref`, perhaps you need to restrict type parameter `impl ratatui::backend::Backend<Error = io::Error> + Send` with one of them:
+    |
+491 | fn teardown_terminal(terminal: &mut Terminal<(impl ratatui::backend::Backend<Error = io::Error> + Send + Iterator)>) -> io::Result<()> {
+    |                                              +                                                         +++++++++++
+491 | fn teardown_terminal(terminal: &mut Terminal<(impl ratatui::backend::Backend<Error = io::Error> + Send + allocator_api2::stable::alloc::Allocator)>) -> io::Result<()> {
+    |                                              +                                                         +++++++++++++++++++++++++++++++++++++++++++
+491 | fn teardown_terminal(terminal: &mut Terminal<(impl ratatui::backend::Backend<Error = io::Error> + Send + std::io::Read)>) -> io::Result<()> {
+    |                                              +                                                         ++++++++++++++++
+491 | fn teardown_terminal(terminal: &mut Terminal<(impl ratatui::backend::Backend<Error = io::Error> + Send + std::io::Write)>) -> io::Result<()> {
+    |                                              +                                                         +++++++++++++++++
+
+error[E0599]: the method `by_ref` exists for mutable reference `&mut impl ratatui::backend::Backend<Error = io::Error> + Send`, but its trait bounds were not satisfied
+   --> src/main.rs:493:5
+    |
+493 |     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
+    |
+    = note: the following trait bounds were not satisfied:
+            `impl ratatui::backend::Backend<Error = io::Error> + Send: std::io::Write`
+            which is required by `&mut impl ratatui::backend::Backend<Error = io::Error> + Send: std::io::Write`
+            `impl ratatui::backend::Backend<Error = io::Error> + Send: Iterator`
+            which is required by `&mut impl ratatui::backend::Backend<Error = io::Error> + Send: Iterator`
+    = help: items from traits can only be used if the type parameter is bounded by the trait
+    = note: this error originates in the macro `execute` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: the following traits define an item `by_ref`, perhaps you need to restrict type parameter `impl ratatui::backend::Backend<Error = io::Error> + Send` with one of them:
+    |
+491 | fn teardown_terminal(terminal: &mut Terminal<(impl ratatui::backend::Backend<Error = io::Error> + Send + Iterator)>) -> io::Result<()> {
+    |                                              +                                                         +++++++++++
+491 | fn teardown_terminal(terminal: &mut Terminal<(impl ratatui::backend::Backend<Error = io::Error> + Send + allocator_api2::stable::alloc::Allocator)>) -> io::Result<()> {
+    |                                              +                                                         +++++++++++++++++++++++++++++++++++++++++++
+491 | fn teardown_terminal(terminal: &mut Terminal<(impl ratatui::backend::Backend<Error = io::Error> + Send + std::io::Read)>) -> io::Result<()> {
+    |                                              +                                                         ++++++++++++++++
+491 | fn teardown_terminal(terminal: &mut Terminal<(impl ratatui::backend::Backend<Error = io::Error> + Send + std::io::Write)>) -> io::Result<()> {
+    |                                              +                                                         +++++++++++++++++
+
+Some errors have detailed explanations: E0220, E0277, E0308, E0433, E0599, E0614.
+For more information about an error, try `rustc --explain E0220`.
+warning: `tetris` (bin "tetris") generated 2 warnings
+error: could not compile `tetris` (bin "tetris") due to 17 previous errors; 2 warnings emitted
+[0m
+[0m← [0mWrite src/main.rs
+Wrote file successfully.
+[0m
+[0m$ [0mcargo build 2>&1 | tail -40
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b-opencode-1)
+warning: unused import: `Widget`
+  --> src/main.rs:12:49
+   |
+12 |     widgets::{Block, Borders, Clear, Paragraph, Widget},
+   |                                                 ^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0308]: mismatched types
+   --> src/main.rs:357:80
+    |
+357 |             let hit = s.iter().any(|&(dx, dy)| dx - min_x == x as i32 && dy == y);
+    |                                                                          --    ^ expected `i32`, found `usize`
+    |                                                                          |
+    |                                                                          expected because this is `i32`
+    |
+help: you can convert a `usize` to an `i32` and panic if the converted value doesn't fit
+    |
+357 |             let hit = s.iter().any(|&(dx, dy)| dx - min_x == x as i32 && dy == y.try_into().unwrap());
+    |                                                                                 ++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0308`.
+warning: `tetris` (bin "tetris") generated 1 warning
+error: could not compile `tetris` (bin "tetris") due to 1 previous error; 1 warning emitted
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
+@@ -353,9 +353,9 @@
+ let mut rows: Vec<Vec<Span<'static>>> = Vec::with_capacity(h);
+ for y in 0..h {
+     let mut row: Vec<Span<'static>> = Vec::with_capacity(w);
+     for x in 0..w {
+-        let hit = s.iter().any(|&(dx, dy)| dx - min_x == x as i32 && dy == y);
++        let hit = s.iter().any(|&(dx, dy)| dx - min_x == x as i32 && dy == y as i32);
+         if hit {
+             row.push(Span::styled(
+                 "██",
+                 Style::default().fg(piece_color(kind)).add_modifier(Modifier::BOLD),
+
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
+@@ -8,9 +8,9 @@
+     backend::CrosstermBackend,
+     layout::{Constraint, Direction, Layout, Rect},
+     style::{Color, Modifier, Style},
+     text::{Line, Span},
+-    widgets::{Block, Borders, Clear, Paragraph, Widget},
++    widgets::{Block, Borders, Clear, Paragraph},
+     Terminal,
+ };
+ use std::{
+     io::{self, Stdout},
+
+[0m
+[0m$ [0mcargo build 2>&1 | tail -30
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b-opencode-1)
+warning: method `tick` is never used
+   --> src/main.rs:257:8
+    |
+140 | impl Game {
+    | --------- method in this implementation
+...
+257 |     fn tick(&mut self) {
+    |        ^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `tetris` (bin "tetris") generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.58s
+[0m
+[0m→ [0mRead src/main.rs[90m [offset=255, limit=10][0m
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b-opencode-1/src/main.rs
+@@ -253,17 +253,8 @@
+     let lvl = self.level.max(1) as u64;
+     Duration::from_millis((1000u64 / lvl).max(60))
+ }
+ 
+-fn tick(&mut self) {
+-    if self.over || self.paused {
+-        return;
+-    }
+-    if !self.try_move(0, 1) {
+-        self.lock();
+-    }
+-}
+-
+ fn soft_drop(&mut self) {
+     if self.over || self.paused {
+         return;
+     }
+
+[0m
+[0m$ [0mcargo build 2>&1 | tail -15 && cargo build --release 2>&1 | tail -5
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b-opencode-1)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.44s
+   Compiling darling v0.24.1
+   Compiling instability v0.3.14
+   Compiling ratatui v0.29.0
+   Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b-opencode-1)
+    Finished `release` profile [optimized] target(s) in 5.73s
+[0m
+[0m$ [0mls -la target/release/tetris && file target/release/tetris
+-rwxr-xr-x 2 gud gud 989768 Oct  1 00:18 target/release/tetris
+target/release/tetris: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=b1c1d301c0615bee2d1ef6a287523be3027a8961, not stripped
+[0m
+Done. Tetris in Rust + ratatui, builds clean (debug + release).
+
+**Files:**
+- `Cargo.toml` — ratatui 0.29, crossterm 0.28, rand 0.8
+- `src/main.rs` — full game
+
+**Features:**
+- 10×20 board, all 7 tetrominoes with 4-rotation states and wall kicks
+- Ghost piece preview, next-piece panel, score/lines/level
+- Line-clear scoring (100/300/500/800 × level), gravity speeds up per level
+- Pause, game-over + restart, hard/soft drop
+
+**Controls:** ←/→ move · ↑ or X rotate CW · Z rotate CCW · ↓ soft drop · Space hard drop · P pause · R restart · Q / Ctrl-C quit
+
+Run it:
+```
+cargo run
+```
+or the prebuilt binary `target/release/tetris`. It's a TUI, so run it in an interactive terminal.

@@ -1,0 +1,11 @@
+[package]
+name = "tetris"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = "0.30.2"
+crossterm = "0.29.0"
+
+[profile.release]
+opt-level = 3

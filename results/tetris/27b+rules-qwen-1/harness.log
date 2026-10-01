@@ -1,0 +1,31 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Configure tools.executionSandbox on Linux or a supported legacy sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Tetris is done and fully verified. 
+
+## What was built
+
+```
+src/
+├── main.rs    # terminal lifecycle, input handling, game loop
+├── game.rs    # pure game logic (15 unit tests)
+└── render.rs  # ratatui UI
+```
+
+**Gameplay**
+- 10×20 board with hidden spawn row, ghost piece, next-piece preview, 7-bag randomizer
+- Wall-kick rotation, soft drop (+1/row), hard drop (+2/row), pause, restart
+- Scoring: 100/300/500/800 × level for 1–4 line clears; level up every 10 lines; gravity 800ms → 50ms cap
+- **Controls:** ←/→ move · ↑/x rotate · z rotate back · ↓ soft drop · space hard drop · p pause · r restart · q quit
+
+**Verification (all green)**
+- `cargo build` — 0 errors, 0 warnings
+- `cargo clippy --all-targets` — 0 warnings
+- `cargo test` — 15/15 passed (debug and release)
+- Ran it in tmux as a user would: initial screen renders correctly, left-move/rotate work, hard drop locked a piece at the bottom and scored 38 (2×19 rows), PAUSED overlay appears, `r` reset the score, `q` exited and the shell prompt returned with a clean terminal (alternate screen + raw mode properly restored)
+- Small terminals (<64×24) show a friendly "needs at least 64x24" message instead of crashing
+
+Two bugs were found and fixed along the way: `drop_distance` returned the first *invalid* offset (hard drop landed one row below the floor → index panic), and the line-clear compaction underflowed on an all-empty board.
+
+Run it with:
+```sh
+cd /home/gud/bench-harnesses/results/27b+rules-qwen-1 && cargo run --release
+```

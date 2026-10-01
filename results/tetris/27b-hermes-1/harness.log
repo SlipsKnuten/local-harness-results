@@ -1,0 +1,22 @@
+
+session_id: 20261001_015727_05f764
+Done. Working Tetris in Rust + ratatui, built and verified.
+
+**What it is**
+- Full TUI game in `/home/gud/bench-harnesses/results/27b-hermes-1/tetris/`
+- `src/main.rs` (~630 lines, single file): game state, 7-bag randomizer, collision/rotation with wall-kicks, line clearing, scoring/levels, and the ratatui renderer
+- 10×20 board, all 7 tetrominoes in their own colors, next-piece preview, ghost (drop-shadow) piece, pause/restart/game-over overlays, best-score tracking
+
+**Verified by real execution**
+- `cargo build` and `cargo build --release` both succeed, zero warnings
+- Launched the release binary in a live PTY: it rendered the board, controls, stats, next preview, and ghost pieces correctly
+- Sent `q` and it exited cleanly (exit code 0)
+
+**How to play**
+```
+cd /home/gud/bench-harnesses/results/27b-hermes-1/tetris
+cargo run
+```
+←/→ move · ↑/x rotate cw · z rotate ccw · ↓ soft drop · Space hard drop · p pause · r restart · q quit
+
+Note: I couldn't play-test the full scoring/line-clear/game-over paths interactively (that needs a human in the loop), but the code compiles clean, the UI renders, and gravity + input + rendering all run in the loop. One thing I did not exercise end-to-end is an actual line clear and game-over transition — those are standard logic but untested live. If you want, I can add a small headless unit test that drives `clear_lines`, rotation, and a forced stack-out to lock those paths in.

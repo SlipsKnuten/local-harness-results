@@ -1,0 +1,2058 @@
+[0m
+> build · local
+[0m
+[0m$ [0mls -la /home/gud/bench-harnesses/results/27b+rules-opencode-1
+total 16
+drwxr-xr-x  2 gud gud 4096 Oct  1 11:48 .
+drwxr-xr-x 20 gud gud 4096 Oct  1 11:48 ..
+-rw-r--r--  1 gud gud  999 Oct  1 11:48 AGENTS.md
+-rw-r--r--  1 gud gud  999 Oct  1 11:48 QWEN.md
+[0m
+[0m→ [0mRead QWEN.md
+[0m
+[0m# [0mTodos
+[•] Init cargo project + add ratatui dep
+[ ] Implement core game logic (board, pieces, rotation, line clear, scoring)
+[ ] Implement ratatui UI + input loop
+[ ] Write unit tests for core logic
+[ ] cargo build + clippy with zero errors/warnings
+[ ] Run in tmux, verify rendering and input
+[0m
+I'll create a Tetris game with Rust and ratatui. Let me plan this out.
+Let me initialize the project.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo init --name tetris 2>&1
+Creating binary (application) package
+note: see more `Cargo.toml` keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo add ratatui 2>&1 && cargo add crossterm 2>&1
+Updating crates.io index
+      Adding ratatui v0.30.2 to dependencies
+             Features:
+             + all-widgets
+             + crossterm
+             + layout-cache
+             + macros
+             + std
+             + underline-color
+             + widget-calendar
+             - crossterm_0_28
+             - crossterm_0_29
+             - document-features
+             - palette
+             - portable-atomic
+             - scrolling-regions
+             - serde
+             - termina
+             - termion
+             - termwiz
+             - unstable
+             - unstable-backend-writer
+             - unstable-rendered-line-info
+             - unstable-widget-ref
+    Updating crates.io index
+     Locking 182 packages to latest Rust 1.97.1 compatible versions
+      Adding generic-array v0.14.7 (available: v0.14.9)
+    Updating crates.io index
+      Adding crossterm v0.29.0 to dependencies
+             Features:
+             + bracketed-paste
+             + derive-more
+             + events
+             + windows
+             - event-stream
+             - filedescriptor
+             - libc
+             - osc52
+             - serde
+             - use-dev-tty
+[0m
+Now let me check the ratatui 0.30 API in the registry source to use it correctly.
+[0m$ [0mls ~/.cargo/registry/src/*/ 2>/dev/null | grep -iE 'ratatui|crossterm' ; cargo fetch --manifest-path /home/gud/bench-harnesses/results/27b+rules-opencode-1/Cargo.toml 2>&1 | tail -2
+crossterm-0.28.1
+crossterm-0.29.0
+crossterm_winapi-0.9.1
+ratatui-0.29.0
+ratatui-0.30.2
+ratatui-core-0.1.2
+ratatui-crossterm-0.1.2
+ratatui-macros-0.7.2
+ratatui-termina-0.1.0
+ratatui-termwiz-0.1.2
+ratatui-widgets-0.3.2
+  Downloaded wasm-bindgen-macro-support v0.2.129
+  Downloaded futures-util v0.3.34
+[0m
+[0m$ [0mls ~/.cargo/registry/src/*/ratatui-0.30.2/src/ && grep -n "pub use" ~/.cargo/registry/src/*/ratatui-0.30.2/src/lib.rs | head -40
+init.rs
+lib.rs
+prelude.rs
+widgets
+widgets.rs
+478:pub use palette;
+479:pub use ratatui_core::terminal::{CompletedFrame, Frame, Terminal, TerminalOptions, Viewport};
+480:pub use ratatui_core::{buffer, layout};
+483:pub use ratatui_crossterm::crossterm;
+485:pub use ratatui_macros as macros;
+488:pub use ratatui_termina::termina;
+491:pub use ratatui_termion::termion;
+494:pub use ratatui_termwiz::termwiz;
+498:pub use crate::init::{
+505:    pub use ratatui_core::backend::{Backend, ClearType, TestBackend, WindowSize};
+507:    pub use ratatui_crossterm::{CrosstermBackend, FromCrossterm, IntoCrossterm};
+509:    pub use ratatui_termina::{FromTermina, IntoTermina, TerminaBackend};
+511:    pub use ratatui_termion::{FromTermion, IntoTermion, TermionBackend};
+513:    pub use ratatui_termwiz::{FromTermwiz, IntoTermwiz, TermwizBackend};
+517:pub use ratatui_core::{style, symbols, text};
+519:pub use ratatui_widgets::border;
+[0m
+[0m$ [0mgrep -n "pub fn set_char\|pub fn set_style\|pub fn set_content\|pub fn set_symbol\|pub fn set_fg\|pub fn set_spans\|pub fn get_mut\|pub fn set_line" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/buffer/buffer.rs | head; grep -n "pub fn buffer\|pub fn area\|pub fn render_widget\|pub fn render_stateless_widget\|pub fn set_cursor" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/terminal/frame.rs | head
+151:    pub fn get_mut(&mut self, x: u16, y: u16) -> &mut Cell {
+373:    pub fn set_line(&mut self, x: u16, y: u16, line: &Line<'_>, max_width: u16) -> (u16, u16) {
+405:    pub fn set_style<S: Into<Style>>(&mut self, area: Rect, style: S) {
+106:    pub fn render_widget<W: Widget>(&mut self, widget: W, area: Rect) {
+166:    pub fn set_cursor_position<P: Into<Position>>(&mut self, position: P) {
+181:    pub fn set_cursor(&mut self, x: u16, y: u16) {
+[0m
+[0m$ [0mgrep -n "pub fn set_char\|pub fn set_style\|pub fn set_fg\|pub fn set_symbol\|pub fn set_span" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/buffer/cell.rs | head; grep -n "pub const fn bordered\|pub fn bordered\|fn bordered" ~/.cargo/registry/src/*/ratatui-widgets-0.3.2/src/block.rs | head; grep -n "pub fn border_title\|pub fn title\|pub fn borders" ~/.cargo/registry/src/*/ratatui-widgets-0.3.2/src/block.rs | head
+156:    pub fn set_symbol(&mut self, symbol: &str) -> &mut Self {
+170:    pub fn set_char(&mut self, ch: char) -> &mut Self {
+192:    pub fn set_style<S: Into<Style>>(&mut self, style: S) -> &mut Self {
+293:    pub const fn bordered() -> Self {
+366:    pub fn title<T>(mut self, title: T) -> Self
+397:    pub fn title_top<T: Into<Line<'a>>>(mut self, title: T) -> Self {
+426:    pub fn title_bottom<T: Into<Line<'a>>>(mut self, title: T) -> Self {
+445:    pub fn title_style<S: Into<Style>>(mut self, style: S) -> Self {
+[0m
+[0m$ [0mgrep -n "pub use" ~/.cargo/registry/src/*/ratatui-0.30.2/src/prelude.rs | head -30; grep -n "impl Event\|pub fn read\|pub fn poll" ~/.cargo/registry/src/*/crossterm-0.29.0/src/event.rs | head
+31:pub use ratatui_core::backend::{self, Backend};
+33:pub use ratatui_crossterm::{CrosstermBackend, FromCrossterm, IntoCrossterm};
+36:pub use crate::backend::{FromTermina, IntoTermina, TerminaBackend};
+38:pub use crate::backend::{FromTermion, IntoTermion, TermionBackend};
+40:pub use crate::backend::{FromTermwiz, IntoTermwiz, TermwizBackend};
+41:pub use crate::buffer::{self, Buffer};
+42:pub use crate::layout::{
+46:pub use crate::style::{self, Color, Modifier, Style, Stylize};
+47:pub use crate::text::{self, Line, Masked, Span, Text};
+48:pub use crate::widgets::{BlockExt, StatefulWidget, Widget};
+49:pub use crate::{Frame, Terminal, symbols};
+204:pub fn poll(timeout: Duration) -> std::io::Result<bool> {
+249:pub fn read() -> std::io::Result<Event> {
+568:impl Event {
+[0m
+APIs confirmed. Let me check `ratatui::init` and add `rand`.
+[0m$ [0mgrep -n "pub fn init\|pub fn restore\|pub type DefaultTerminal" ~/.cargo/registry/src/*/ratatui-0.30.2/src/init.rs; cd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo add rand 2>&1 | tail -3
+213:pub type DefaultTerminal = Terminal<CrosstermBackend<Stdout>>;
+365:pub fn init() -> DefaultTerminal {
+449:pub fn init_with_options(options: TerminalOptions) -> DefaultTerminal {
+524:pub fn restore() {
+      Adding cpufeatures v0.3.1
+      Adding rand v0.10.3
+      Adding rand_core v0.10.1
+[0m
+[0m$ [0mgrep -rn "pub fn rng()" ~/.cargo/registry/src/*/rand-0.10.3/src/lib.rs; ls ~/.cargo/registry/src/*/rand-0.10.3/src/; grep -n "fill_array\|shuffle" ~/.cargo/registry/src/*/rand-0.10.3/src/rng.rs | head
+distr
+lib.rs
+prelude.rs
+rng.rs
+rngs
+seq
+[0m
+[0m$ [0mgrep -n "rng\b\|Rng\b\|SeedableRng" ~/.cargo/registry/src/*/rand-0.10.3/src/lib.rs | head -20; grep -n "pub use" ~/.cargo/registry/src/*/rand-0.10.3/src/rng.rs | head; grep -rn "pub fn shuffle\|pub fn fill_array" ~/.cargo/registry/src/*/rand-0.10.3/src/rng.rs ~/.cargo/registry/src/*/rand-0.10.3/src/seq/*.rs | head
+59:pub use rand_core::{CryptoRng, Rng, SeedableRng, TryCryptoRng, TryRng};
+64:mod rng;
+69:#[cfg(feature = "thread_rng")]
+70:pub use crate::rngs::thread::rng;
+72:pub use rng::{Fill, RngExt};
+74:#[cfg(feature = "thread_rng")]
+79:/// This method yields a seeded RNG, using [`rng`] ([`ThreadRng`]) if enabled or
+80:/// [`SysRng`] otherwise.
+85:/// let mut rng: rand::rngs::SmallRng = rand::make_rng();
+86:/// # let _ = rand::Rng::next_u32(&mut rng);
+91:/// If [`SysRng`] fails to obtain entropy from the OS. This is unlikely
+96:/// Refer to [`ThreadRng#Security`].
+98:/// [`SysRng`]: crate::rngs::SysRng
+99:/// [`ThreadRng`]: crate::rngs::ThreadRng
+100:/// [`ThreadRng#Security`]: crate::rngs::ThreadRng#security
+101:#[cfg(feature = "sys_rng")]
+103:pub fn make_rng<R: SeedableRng>() -> R {
+104:    #[cfg(feature = "thread_rng")]
+106:        R::from_rng(&mut rng())
+109:    #[cfg(not(feature = "thread_rng"))]
+[0m
+[0m$ [0mgrep -n "fn shuffle\|fn fill_array\|fn choose" ~/.cargo/registry/src/*/rand-0.10.3/src/rng.rs | head; grep -n "pub struct StdRng\|impl SeedableRng" ~/.cargo/registry/src/*/rand-0.10.3/src/rngs/std.rs | head -5
+73:pub struct StdRng(Rng);
+94:impl SeedableRng for StdRng {
+[0m
+[0m$ [0msed -n 1,80p ~/.cargo/registry/src/*/rand-0.10.3/src/rng.rs; ls ~/.cargo/registry/src/*/rand-0.10.3/src/seq/
+// Copyright 2018 Developers of the Rand project.
+// Copyright 2013-2017 The Rust Project Developers.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! [`RngExt`] trait
+
+use crate::distr::uniform::{SampleRange, SampleUniform};
+use crate::distr::{self, Distribution, StandardUniform};
+use core::num::Wrapping;
+use core::{mem, slice};
+use rand_core::Rng;
+
+/// User-level interface for RNGs
+///
+/// [`Rng`] is the `dyn`-safe implementation-level interface for Random
+/// (Number) Generators. This trait, `RngExt`, provides a user-level interface
+/// on RNGs. It is implemented automatically for any <code>R: [Rng][]</code>.
+///
+/// This trait must usually be brought into scope via `use rand::RngExt;` or
+/// `use rand::prelude::*;`.
+///
+/// # Generic usage
+///
+/// The basic pattern is `fn foo<R: Rng + ?Sized>(rng: &mut R)`. Some
+/// things are worth noting here:
+///
+/// - Since `RngExt: Rng` and every `RngExt` implements `Rng`, it makes no
+///   difference whether we use `R: Rng` or `R: RngExt` for `R: Sized`.
+/// - Only `Rng` is dyn safe, supporting `&mut dyn Rng` and `R: Rng + ?Sized`.
+///
+/// An alternative pattern is possible: `fn foo<R: Rng>(rng: R)`. This has some
+/// trade-offs. It allows the argument to be consumed directly without a `&mut`;
+/// also it still works directly
+/// on references (including type-erased references). Unfortunately within the
+/// function `foo` it is not known whether `rng` is a reference type or not,
+/// hence many uses of `rng` require an extra reference, either explicitly
+/// (`distr.sample(&mut rng)`) or implicitly (`rng.random()`); one may hope the
+/// optimiser can remove redundant references later.
+///
+/// Example:
+///
+/// ```
+/// use rand::{Rng, RngExt};
+///
+/// fn foo<R: Rng + ?Sized>(rng: &mut R) -> f32 {
+///     rng.random()
+/// }
+///
+/// # let v = foo(&mut rand::rng());
+/// ```
+pub trait RngExt: Rng {
+    /// Return a random value via the [`StandardUniform`] distribution.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rand::RngExt;
+    ///
+    /// let mut rng = rand::rng();
+    /// let x: u32 = rng.random();
+    /// println!("{}", x);
+    /// println!("{:?}", rng.random::<(f64, bool)>());
+    /// ```
+    ///
+    /// # Arrays and tuples
+    ///
+    /// The `rng.random()` method is able to generate arrays
+    /// and tuples (up to 12 elements), so long as all element types can be
+    /// generated.
+    ///
+    /// For arrays of integers, especially for those with small element types
+    /// (< 64 bit), it will likely be faster to instead use [`RngExt::fill`],
+    /// though note that generated values will differ.
+    ///
+    /// ```
+coin_flipper.rs
+increasing_uniform.rs
+index.rs
+iterator.rs
+mod.rs
+slice.rs
+[0m
+[0m$ [0mgrep -n "fn random_range\|fn fill\b\|fn random<" ~/.cargo/registry/src/*/rand-0.10.3/src/rng.rs | head; grep -rn "pub use" ~/.cargo/registry/src/*/rand-0.10.3/src/seq/mod.rs | head
+93:    fn random<T>(&mut self) -> T
+163:    fn random_range<T, R>(&mut self, range: R) -> T
+316:    fn fill<T: Fill>(&mut self, dest: &mut [T]) {
+40:pub use crate::distr::weighted::Error as WeightError;
+41:pub use iterator::IteratorRandom;
+43:pub use slice::IndexedSamples;
+46:pub use slice::SliceChooseIter;
+47:pub use slice::{IndexedMutRandom, IndexedRandom, SliceRandom};
+55:    pub use super::index_::*;
+[0m
+Now let me check how `ratatui::crossterm` is exposed:
+[0m$ [0msed -n 470,500p ~/.cargo/registry/src/*/ratatui-0.30.2/src/lib.rs
+#![warn(clippy::alloc_instead_of_core)]
+
+extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+
+/// re-export the `palette` crate so that users don't have to add it as a dependency
+#[cfg(feature = "palette")]
+pub use palette;
+pub use ratatui_core::terminal::{CompletedFrame, Frame, Terminal, TerminalOptions, Viewport};
+pub use ratatui_core::{buffer, layout};
+/// re-export the `crossterm` crate so that users don't have to add it as a dependency
+#[cfg(feature = "crossterm")]
+pub use ratatui_crossterm::crossterm;
+#[cfg(feature = "macros")]
+pub use ratatui_macros as macros;
+/// re-export the `termina` crate so that users don't have to add it as a dependency
+#[cfg(feature = "termina")]
+pub use ratatui_termina::termina;
+/// re-export the `termion` crate so that users don't have to add it as a dependency
+#[cfg(all(not(windows), feature = "termion"))]
+pub use ratatui_termion::termion;
+/// re-export the `termwiz` crate so that users don't have to add it as a dependency
+#[cfg(feature = "termwiz")]
+pub use ratatui_termwiz::termwiz;
+
+#[cfg(feature = "crossterm")]
+#[doc(inline)]
+pub use crate::init::{
+    DefaultTerminal, init, init_with_options, restore, run, try_init, try_init_with_options,
+    try_restore,
+[0m
+[0m# [0mTodos
+[✓] Init cargo project + add ratatui dep
+[•] Implement core game logic (board, pieces, rotation, line clear, scoring)
+[ ] Implement ratatui UI + input loop
+[ ] Write unit tests for core logic
+[ ] cargo build + clippy with zero errors/warnings
+[ ] Run in tmux, verify rendering and input
+[0m
+Now I'll write the game logic module.
+[0m← [0mWrite src/game.rs
+Wrote file successfully.
+[0m
+Let me fix the Z piece rotation states (they should be true CW/CCW rotations around the 3x3 box center):
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -39,11 +39,11 @@
+ (Shape::S, 1) => &[(1, 0), (1, 1), (2, 1), (2, 2)],
+ (Shape::S, 2) => &[(1, 1), (2, 1), (0, 2), (1, 2)],
+ (Shape::S, 3) => &[(0, 0), (0, 1), (1, 1), (1, 2)],
+ (Shape::Z, 0) => &[(0, 0), (1, 0), (1, 1), (2, 1)],
+-(Shape::Z, 1) => &[(0, 0), (1, 1), (2, 1), (1, 2)],
++(Shape::Z, 1) => &[(2, 0), (1, 1), (2, 1), (1, 2)],
+ (Shape::Z, 2) => &[(0, 1), (1, 1), (1, 2), (2, 2)],
+-(Shape::Z, 3) => &[(1, 0), (1, 1), (0, 2), (1, 2)],
++(Shape::Z, 3) => &[(1, 0), (1, 1), (0, 1), (0, 2)],
+ (Shape::J, 0) => &[(0, 0), (0, 1), (1, 1), (2, 1)],
+ (Shape::J, 1) => &[(1, 0), (2, 0), (1, 1), (1, 2)],
+ (Shape::J, 2) => &[(0, 1), (1, 1), (2, 1), (2, 2)],
+ (Shape::J, 3) => &[(0, 0), (0, 1), (0, 2), (1, 2)],
+
+[0m
+Now the UI in main.rs:
+[0m← [0mWrite src/main.rs
+Wrote file successfully.
+[0m
+Let me check `Buffer::cell_mut` and `Block::style` in the installed versions:
+[0m$ [0mgrep -n "pub fn cell_mut\|pub fn cell(" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/buffer/buffer.rs | head -4; grep -n "pub fn style" ~/.cargo/registry/src/*/ratatui-widgets-0.3.2/src/block.rs | head -4; grep -n "pub fn darken" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/style/color.rs
+210:    pub fn cell_mut<P: Into<Position>>(&mut self, position: P) -> Option<&mut Cell> {
+562:    pub fn style<S: Into<Style>>(mut self, style: S) -> Self {
+[0m
+[0m$ [0mgrep -rn "pub fn darken\|pub fn brighten" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/style/*.rs | head
+(no output)
+[0m
+No `darken` in 0.30 — I'll rewrite main.rs more cleanly:
+[0m← [0mWrite src/main.rs
+Wrote file successfully.
+[0m
+Let me verify `Frame::buffer_mut` and `Cell::set_fg`:
+[0m$ [0mgrep -n "pub fn buffer_mut\|pub fn buffer\b" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/terminal/frame.rs; grep -n "pub fn set_fg\|pub fn set_modifier" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/buffer/cell.rs | head -4
+(no output)
+[0m
+[0m$ [0mgrep -n "pub fn" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/terminal/frame.rs; echo ---; grep -n "pub fn" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/buffer/cell.rs | head -20
+106:    pub fn render_widget<W: Widget>(&mut self, widget: W, area: Rect) {
+147:    pub fn render_stateful_widget<W>(&mut self, widget: W, area: Rect, state: &mut W::State)
+166:    pub fn set_cursor_position<P: Into<Position>>(&mut self, position: P) {
+181:    pub fn set_cursor(&mut self, x: u16, y: u16) {
+---
+105:    pub fn symbol(&self) -> &str {
+146:    pub fn merge_symbol(&mut self, symbol: &str, strategy: MergeStrategy) -> &mut Self {
+156:    pub fn set_symbol(&mut self, symbol: &str) -> &mut Self {
+170:    pub fn set_char(&mut self, ch: char) -> &mut Self {
+192:    pub fn set_style<S: Into<Style>>(&mut self, style: S) -> &mut Self {
+248:    pub fn reset(&mut self) {
+[0m
+[0m$ [0msed -n 1,110p ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/terminal/frame.rs
+use crate::buffer::Buffer;
+use crate::layout::{Position, Rect};
+use crate::widgets::{StatefulWidget, Widget};
+
+/// A consistent view into the terminal state for rendering a single frame.
+///
+/// You usually get a `Frame` from the closure argument of [`Terminal::draw`] /
+/// [`Terminal::try_draw`]. For manual rendering, use
+/// [`Terminal::get_frame`](crate::terminal::Terminal::get_frame).
+///
+/// A `Frame` is used to render widgets into Ratatui's current buffer and request the cursor state
+/// for the end of the render pass.
+///
+/// The changes drawn to the frame are applied only to the current [`Buffer`]. After the closure
+/// returns, the current buffer is compared to the previous buffer and only the changed cells are
+/// sent to the backend. This avoids drawing redundant cells.
+///
+/// [`Buffer`]: crate::buffer::Buffer
+/// [`Terminal::draw`]: crate::terminal::Terminal::draw
+/// [`Terminal::try_draw`]: crate::terminal::Terminal::try_draw
+#[derive(Debug, Hash)]
+pub struct Frame<'a> {
+    /// Where should the cursor be after drawing this frame?
+    ///
+    /// If `None`, the cursor is hidden at the end of the render pass. If `Some((x, y))`, the
+    /// cursor is shown and placed at `(x, y)` after the frame's buffer diff has been applied to
+    /// the backend.
+    pub(crate) cursor_position: Option<Position>,
+
+    /// The area of the viewport
+    pub(crate) viewport_area: Rect,
+
+    /// The buffer that is used to draw the current frame
+    pub(crate) buffer: &'a mut Buffer,
+
+    /// The frame count indicating the sequence number of this frame.
+    pub(crate) count: usize,
+}
+
+/// `CompletedFrame` represents the state of the terminal after the last successful
+/// [`Terminal::draw`] / [`Terminal::try_draw`] render pass has been applied. Therefore, it is only
+/// valid until the next successful draw call.
+///
+/// This lifetime follows Ratatui's double-buffering model: the next render pass swaps buffers via
+/// [`Terminal::swap_buffers`], so the previously completed buffer is no longer the current output.
+///
+/// [`Terminal::draw`]: crate::terminal::Terminal::draw
+/// [`Terminal::swap_buffers`]: crate::terminal::Terminal::swap_buffers
+/// [`Terminal::try_draw`]: crate::terminal::Terminal::try_draw
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct CompletedFrame<'a> {
+    /// The buffer that was used to draw the last frame.
+    pub buffer: &'a Buffer,
+    /// The size of the last frame.
+    pub area: Rect,
+    /// The frame count indicating the sequence number of this frame.
+    pub count: usize,
+}
+
+impl Frame<'_> {
+    /// Returns the area of the current frame.
+    ///
+    /// This is guaranteed not to change during rendering, so may be called multiple times.
+    ///
+    /// If your app listens for a resize event from the backend, ignore that event's dimensions for
+    /// calculations performed during the current render callback and use this value instead. It is
+    /// the area of the buffer that is actually being rendered for this pass.
+    pub const fn area(&self) -> Rect {
+        self.viewport_area
+    }
+
+    /// Returns the area of the current frame.
+    ///
+    /// This is guaranteed not to change during rendering, so may be called multiple times.
+    ///
+    /// If your app listens for a resize event from the backend, ignore that event's dimensions for
+    /// calculations performed during the current render callback and use this value instead. It is
+    /// the area of the buffer that is actually being rendered for this pass.
+    #[deprecated = "use `area()` instead"]
+    pub const fn size(&self) -> Rect {
+        self.viewport_area
+    }
+
+    /// Render a [`Widget`] to the current buffer using [`Widget::render`].
+    ///
+    /// Usually the area argument is the size of the current frame or a sub-area of the current
+    /// frame (which can be obtained using [`Layout`] to split the total area).
+    ///
+    /// Rendering writes directly into the current frame buffer. If multiple widgets cover the same
+    /// cells, later renders win for those cells.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use ratatui_core::{backend::TestBackend, terminal::Terminal};
+    /// # let backend = TestBackend::new(5, 5);
+    /// # let mut terminal = Terminal::new(backend).unwrap();
+    /// # let mut frame = terminal.get_frame();
+    /// use ratatui_core::layout::Rect;
+    ///
+    /// let area = Rect::new(0, 0, 5, 5);
+    /// frame.render_widget("Hello", area);
+    /// ```
+    ///
+    /// [`Layout`]: crate::layout::Layout
+    pub fn render_widget<W: Widget>(&mut self, widget: W, area: Rect) {
+        widget.render(area, self.buffer);
+    }
+
+    /// Render a [`StatefulWidget`] to the current buffer using [`StatefulWidget::render`].
+[0m
+[0m$ [0mgrep -rn "buffer_mut\|fn buffer(" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/ | head; echo ---; grep -rn "buffer_mut" ~/.cargo/registry/src/*/ratatui-widgets-0.3.2/src/ | head -5
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:235:    /// terminal.current_buffer_mut().merge(&custom_buffer);
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:284:    /// terminal.current_buffer_mut().merge(&custom_buffer);
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:455:                frame.buffer_mut()[(0, 0)] = Cell::new("x");
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:494:                frame.buffer_mut()[(1, 0)] = Cell::new("y");
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:572:                frame.buffer_mut()[(0, 0)] = Cell::new("x");
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:614:                frame.buffer_mut()[(area.x, area.y)] = Cell::new("z");
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:651:                    frame.buffer_mut()[(viewport_area.x, viewport_area.y)] = Cell::new("i");
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:697:                frame.buffer_mut()[(area.x, area.y)] = Cell::new("a");
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:708:                frame.buffer_mut()[(area.x, area.y)] = Cell::new("g");
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/render.rs:761:                frame.buffer_mut()[(area.x, area.y)] = Cell::new("a");
+---
+[0m
+[0m$ [0mgrep -rn "fn buffer_mut" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/terminal/frame.rs:207:    pub const fn buffer_mut(&mut self) -> &mut Buffer {
+[0m
+[0m$ [0mgrep -n "pub const fn add_modifier\|pub fn add_modifier\|pub const fn fg\|pub fn fg\b" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/style/style.rs | head -5
+grep: /home/gud/.cargo/registry/src/*/ratatui-core-0.1.2/src/style/style.rs: No such file or directory
+[0m
+[0m$ [0mls ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/style/; grep -n "pub const fn fg\|pub fn fg\|pub const fn add_modifier\|pub fn add_modifier\|pub const fn bold" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/style/mod.rs 2>/dev/null | head
+anstyle.rs
+color.rs
+palette
+palette.rs
+palette_conversion.rs
+stylize.rs
+[0m
+[0m$ [0mgrep -rln "pub struct Style" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/; grep -rn "pub mod style" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/lib.rs
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/text/grapheme.rs
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/style.rs
+84:pub mod style;
+[0m
+[0m$ [0mgrep -n "pub const fn fg\|pub fn fg\|pub const fn add_modifier\|pub fn add_modifier\|pub const fn bold\|pub fn bold\|pub const fn set_modifier\|pub fn set_modifier" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/style.rs | head
+335:    pub const fn fg(mut self, color: Color) -> Self {
+408:    pub const fn add_modifier(mut self, modifier: Modifier) -> Self {
+[0m
+Now fix the Cell API usage in main.rs (`set_style` instead of `set_fg`):
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -130,9 +130,9 @@
+     for x in 0..WIDTH {
+         if let Some(shape) = game.board.get(x, y) {
+             let cell = buffer.cell_mut((x + inner.x, y + inner.y)).unwrap();
+             cell.set_char('█');
+-            cell.set_fg(shape_color(shape));
++            cell.set_style(Style::default().fg(shape_color(shape)));
+         }
+     }
+ }
+ 
+
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -145,9 +145,9 @@
+             continue;
+         }
+         let cell = buffer.cell_mut((x + inner.x, y + inner.y)).unwrap();
+         cell.set_char('▒');
+-        cell.set_fg(shape_color(game.current.shape));
++        cell.set_style(Style::default().fg(shape_color(game.current.shape)));
+     }
+ }
+ for (x, y) in game.piece_cells(&game.current) {
+     if y < 0 {
+
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -154,10 +154,10 @@
+             continue;
+         }
+         let cell = buffer.cell_mut((x + inner.x, y + inner.y)).unwrap();
+         cell.set_char('█');
+-        cell.set_fg(shape_color(game.current.shape));
+-        cell.set_modifier(Modifier::BOLD);
++        cell
++            .set_style(Style::default().fg(shape_color(game.current.shape)).add_modifier(Modifier::BOLD));
+     }
+ }
+ 
+ f.render_widget(
+
+[0m
+Now let me build:
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo build 2>&1 | tail -30
+|                        ^^^^^^^^^^^^^^ required by this bound in `Buffer::cell_mut`
+
+error[E0529]: expected an array or slice, found `Rc<[ratatui::prelude::Rect]>`
+   --> src/main.rs:171:9
+    |
+171 |     let [next, stats, controls] = Layout::default()
+    |         ^^^^^^^^^^^^^^^^^^^^^^^ pattern cannot match with input type `Rc<[ratatui::prelude::Rect]>`
+
+error[E0529]: expected an array or slice, found `Rc<[ratatui::prelude::Rect]>`
+   --> src/main.rs:223:9
+    |
+223 |     let [top, bottom] = Layout::default()
+    |         ^^^^^^^^^^^^^ pattern cannot match with input type `Rc<[ratatui::prelude::Rect]>`
+
+error[E0004]: non-exhaustive patterns: `(game::Shape::I, 4_usize..)`, `(game::Shape::T, 4_usize..)`, `(game::Shape::S, 4_usize..)` and 3 more not covered
+  --> src/game.rs:28:15
+   |
+28 |         match (self, rotation) {
+   |               ^^^^^^^^^^^^^^^^ patterns `(game::Shape::I, 4_usize..)`, `(game::Shape::T, 4_usize..)`, `(game::Shape::S, 4_usize..)` and 3 more not covered
+   |
+   = note: the matched value is of type `(game::Shape, usize)`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+   |
+53 ~             (Shape::L, 3) => &[(0, 0), (1, 0), (0, 1), (0, 2)],
+54 ~             _ => todo!(),
+   |
+
+Some errors have detailed explanations: E0004, E0277, E0308, E0529.
+For more information about an error, try `rustc --explain E0004`.
+error: could not compile `tetris` (bin "tetris") due to 21 previous errors
+[0m
+[0m→ [0mRead src/game.rs[90m [offset=26, limit=6][0m
+[0m
+[0m$ [0mgrep -rn "impl From<(u16, u16)> for Position\|impl From<Position>" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/layout/position.rs 2>/dev/null | head; grep -rn "struct Position\|impl From<.*> for Position" ~/.cargo/registry/src/*/ratatui-core-0.1.2/src/layout/*.rs | head
+96:impl From<(u16, u16)> for Position {
+102:impl From<Position> for (u16, u16) {
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/layout/position.rs:57:pub struct Position {
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/layout/position.rs:96:impl From<(u16, u16)> for Position {
+/home/gud/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-core-0.1.2/src/layout/position.rs:108:impl From<Rect> for Position {
+[0m
+Now let me fix the `cells` function to use a lookup table, and fix the u16/usize type mismatches. First, the cells table:
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -23,36 +23,53 @@
+ 
+     /// Relative cell offsets for each of the four rotation states.
+     /// x grows to the right, y grows downward.
+     pub fn cells(self, rotation: usize) -> &'static [(i32, i32)] {
+-        let rotation = rotation % 4;
+-        match (self, rotation) {
+-            (Shape::I, 0) => &[(0, 1), (1, 1), (2, 1), (3, 1)],
+-            (Shape::I, 1) => &[(2, 0), (2, 1), (2, 2), (2, 3)],
+-            (Shape::I, 2) => &[(0, 2), (1, 2), (2, 2), (3, 2)],
+-            (Shape::I, 3) => &[(1, 0), (1, 1), (1, 2), (1, 3)],
+-            (Shape::O, _) => &[(0, 0), (1, 0), (0, 1), (1, 1)],
+-            (Shape::T, 0) => &[(0, 1), (1, 1), (2, 1), (1, 0)],
+-            (Shape::T, 1) => &[(1, 0), (1, 1), (2, 1), (1, 2)],
+-            (Shape::T, 2) => &[(0, 1), (1, 1), (2, 1), (1, 2)],
+-            (Shape::T, 3) => &[(1, 0), (1, 1), (0, 1), (1, 2)],
+-            (Shape::S, 0) => &[(1, 0), (2, 0), (0, 1), (1, 1)],
+-            (Shape::S, 1) => &[(1, 0), (1, 1), (2, 1), (2, 2)],
+-            (Shape::S, 2) => &[(1, 1), (2, 1), (0, 2), (1, 2)],
+-            (Shape::S, 3) => &[(0, 0), (0, 1), (1, 1), (1, 2)],
+-            (Shape::Z, 0) => &[(0, 0), (1, 0), (1, 1), (2, 1)],
+-            (Shape::Z, 1) => &[(2, 0), (1, 1), (2, 1), (1, 2)],
+-            (Shape::Z, 2) => &[(0, 1), (1, 1), (1, 2), (2, 2)],
+-            (Shape::Z, 3) => &[(1, 0), (1, 1), (0, 1), (0, 2)],
+-            (Shape::J, 0) => &[(0, 0), (0, 1), (1, 1), (2, 1)],
+-            (Shape::J, 1) => &[(1, 0), (2, 0), (1, 1), (1, 2)],
+-            (Shape::J, 2) => &[(0, 1), (1, 1), (2, 1), (2, 2)],
+-            (Shape::J, 3) => &[(0, 0), (0, 1), (0, 2), (1, 2)],
+-            (Shape::L, 0) => &[(2, 0), (0, 1), (1, 1), (2, 1)],
+-            (Shape::L, 1) => &[(1, 0), (1, 1), (1, 2), (2, 2)],
+-            (Shape::L, 2) => &[(0, 1), (1, 1), (2, 1), (0, 2)],
+-            (Shape::L, 3) => &[(0, 0), (1, 0), (0, 1), (0, 2)],
+-        }
++        const ROTATIONS: [[&'static [(i32, i32)]; 4]; 7] = [
++            [
++                &[(0, 1), (1, 1), (2, 1), (3, 1)],
++                &[(2, 0), (2, 1), (2, 2), (2, 3)],
++                &[(0, 2), (1, 2), (2, 2), (3, 2)],
++                &[(1, 0), (1, 1), (1, 2), (1, 3)],
++            ],
++            [
++                &[(0, 0), (1, 0), (0, 1), (1, 1)],
++                &[(0, 0), (1, 0), (0, 1), (1, 1)],
++                &[(0, 0), (1, 0), (0, 1), (1, 1)],
++                &[(0, 0), (1, 0), (0, 1), (1, 1)],
++            ],
++            [
++                &[(0, 1), (1, 1), (2, 1), (1, 0)],
++                &[(1, 0), (1, 1), (2, 1), (1, 2)],
++                &[(0, 1), (1, 1), (2, 1), (1, 2)],
++                &[(1, 0), (1, 1), (0, 1), (1, 2)],
++            ],
++            [
++                &[(1, 0), (2, 0), (0, 1), (1, 1)],
++                &[(1, 0), (1, 1), (2, 1), (2, 2)],
++                &[(1, 1), (2, 1), (0, 2), (1, 2)],
++                &[(0, 0), (0, 1), (1, 1), (1, 2)],
++            ],
++            [
++                &[(0, 0), (1, 0), (1, 1), (2, 1)],
++                &[(2, 0), (1, 1), (2, 1), (1, 2)],
++                &[(0, 1), (1, 1), (1, 2), (2, 2)],
++                &[(1, 0), (1, 1), (0, 1), (0, 2)],
++            ],
++            [
++                &[(0, 0), (0, 1), (1, 1), (2, 1)],
++                &[(1, 0), (2, 0), (1, 1), (1, 2)],
++                &[(0, 1), (1, 1), (2, 1), (2, 2)],
++                &[(0, 0), (0, 1), (0, 2), (1, 2)],
++            ],
++            [
++                &[(2, 0), (0, 1), (1, 1), (2, 1)],
++                &[(1, 0), (1, 1), (1, 2), (2, 2)],
++                &[(0, 1), (1, 1), (2, 1), (0, 2)],
++                &[(0, 0), (1, 0), (0, 1), (0, 2)],
++            ],
++        ];
++        ROTATIONS[self as usize][rotation % 4]
+     }
+ }
+ 
+ /// A piece falling on the board: shape, rotation state and position.
+
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -128,9 +128,9 @@
+ 
+ for y in 0..HEIGHT {
+     for x in 0..WIDTH {
+         if let Some(shape) = game.board.get(x, y) {
+-            let cell = buffer.cell_mut((x + inner.x, y + inner.y)).unwrap();
++            let cell = buffer.cell_mut((x as u16 + inner.x, y as u16 + inner.y)).unwrap();
+             cell.set_char('█');
+             cell.set_style(Style::default().fg(shape_color(shape)));
+         }
+     }
+@@ -143,21 +143,24 @@
+         for (x, y) in game.piece_cells(&ghost_piece) {
+             if y < 0 {
+                 continue;
+             }
+-            let cell = buffer.cell_mut((x + inner.x, y + inner.y)).unwrap();
++            let cell = buffer.cell_mut((x as u16 + inner.x, y as u16 + inner.y)).unwrap();
+             cell.set_char('▒');
+             cell.set_style(Style::default().fg(shape_color(game.current.shape)));
+         }
+     }
+     for (x, y) in game.piece_cells(&game.current) {
+         if y < 0 {
+             continue;
+         }
+-        let cell = buffer.cell_mut((x + inner.x, y + inner.y)).unwrap();
++        let cell = buffer.cell_mut((x as u16 + inner.x, y as u16 + inner.y)).unwrap();
+         cell.set_char('█');
+-        cell
+-            .set_style(Style::default().fg(shape_color(game.current.shape)).add_modifier(Modifier::BOLD));
++        cell.set_style(
++            Style::default()
++                .fg(shape_color(game.current.shape))
++                .add_modifier(Modifier::BOLD),
++        );
+     }
+ }
+ 
+ f.render_widget(
+
+[0m
+Now fix the u16 coordinate math in `draw_board`:
+Now fix the layout destructuring (returns `Rc<[Rect]>`, index into it):
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -95,12 +95,14 @@
+     );
+     return;
+ }
+ 
+-let [board, side] = Layout::default()
++let layout = Layout::default()
+     .direction(Direction::Horizontal)
+     .constraints([Constraint::Length(WIDTH as u16 + 2), Constraint::Min(22)])
+     .split(size);
++let board = layout[0];
++let side = layout[1];
+ 
+ draw_board(f, game, board);
+ draw_side(f, game, side);
+ if game.over {
+
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -172,12 +172,15 @@
+     );
+ }
+ 
+ fn draw_side(f: &mut Frame, game: &Game<StdRng>, area: Rect) {
+-    let [next, stats, controls] = Layout::default()
++    let layout = Layout::default()
+         .direction(Direction::Vertical)
+         .constraints([Constraint::Length(6), Constraint::Length(5), Constraint::Min(10)])
+         .split(area);
++    let next = layout[0];
++    let stats = layout[1];
++    let controls = layout[2];
+ 
+     f.render_widget(Block::bordered().title(" Next "), next);
+     f.render_widget(
+         Paragraph::new(next_piece_lines(game.next)).alignment(Alignment::Center),
+
+[0m
+[0m→ [0mRead src/main.rs[90m [offset=228][0m
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -227,12 +227,14 @@
+     y: area.y + area.height / 2 - 2,
+     width: 32,
+     height: 4,
+ };
+-let [top, bottom] = Layout::default()
++let layout = Layout::default()
+     .direction(Direction::Vertical)
+     .constraints([Constraint::Length(1), Constraint::Length(1)])
+     .split(rect);
++let top = layout[0];
++let bottom = layout[1];
+ f.render_widget(
+     Block::bordered()
+         .style(Style::default().bg(Color::Black))
+         .title(title),
+
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo build 2>&1 | tail -40
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+error[E0308]: mismatched types
+  --> src/game.rs:96:9
+   |
+95 |     pub fn get(&self, x: usize, y: usize) -> Option<Shape> {
+   |                                              ------------- expected `Option<game::Shape>` because of return type
+96 |         self.grid.get(y * WIDTH + x).copied()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<Shape>`, found `Option<Option<Shape>>`
+   |
+   = note: expected enum `Option<game::Shape>`
+              found enum `Option<Option<game::Shape>>`
+help: use the `?` operator to extract the `Option<Option<game::Shape>>` value, propagating an `Option::None` value to the caller
+   |
+96 |         self.grid.get(y * WIDTH + x).copied()?
+   |                                              +
+
+error[E0308]: mismatched types
+   --> src/game.rs:314:31
+    |
+314 |         500u64.saturating_sub(speedup).max(80)
+    |                -------------- ^^^^^^^ expected `u64`, found `u32`
+    |                |
+    |                arguments to this method are incorrect
+    |
+note: method defined here
+   --> /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/core/src/num/uint_macros.rs:2471:21
+   --> /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/core/src/num/mod.rs:1318:4
+   ::: /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/core/src/num/mod.rs:1342:5
+    |
+    = note: in this macro invocation
+    = note: this error originates in the macro `uint_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you can convert a `u32` to a `u64`
+    |
+314 |         500u64.saturating_sub(speedup.into()).max(80)
+    |                                      +++++++
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `tetris` (bin "tetris") due to 2 previous errors
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -92,9 +92,9 @@
+     Self { grid: vec![None; WIDTH * HEIGHT] }
+ }
+ 
+ pub fn get(&self, x: usize, y: usize) -> Option<Shape> {
+-    self.grid.get(y * WIDTH + x).copied()
++    self.grid.get(y * WIDTH + x).copied().flatten()
+ }
+ 
+ pub fn set(&mut self, x: usize, y: usize, shape: Shape) {
+     self.grid[y * WIDTH + x] = Some(shape);
+
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -309,8 +309,8 @@
+     }
+ 
+     /// Delay in milliseconds between gravity ticks, decreasing with level.
+     pub fn delay_ms(&self) -> u64 {
+-        let speedup = (self.level.saturating_sub(1)) * 40;
++        let speedup = (self.level.saturating_sub(1) as u64) * 40;
+         500u64.saturating_sub(speedup).max(80)
+     }
+ }
+
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -127,9 +127,9 @@
+     }
+ }
+ 
+ /// Wall-kick offsets tried when a rotation would collide.
+-const KICKS: [(i32, i32); 5] = [(0, 0), (-1, 0), (1, 0), (-2, 0), (2, 0)];
++const KICKS: [(i32, i32); 6] = [(0, 0), (-1, 0), (1, 0), (-2, 0), (2, 0), (0, -1)];
+ 
+ /// Points awarded for clearing 1..=4 lines at once.
+ const LINE_POINTS: [u32; 5] = [0, 100, 300, 500, 800];
+ 
+
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo build 2>&1 | tail -40
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.47s
+[0m
+Builds clean. Now let me add unit tests to game.rs:
+[0m→ [0mRead src/game.rs[90m [offset=290][0m
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -313,4 +313,245 @@
+         let speedup = (self.level.saturating_sub(1) as u64) * 40;
+         500u64.saturating_sub(speedup).max(80)
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use rand::rngs::StdRng;
++    use rand::SeedableRng;
++
++    fn game(seed: u64) -> Game<StdRng> {
++        Game::new(StdRng::seed_from_u64(seed))
++    }
++
++    /// Cells relative to the SRS rotation pivot, doubled to avoid fractions.
++    fn scaled(cells: &[(i32, i32)], px2: i32, py2: i32) -> [(i32, i32); 4] {
++        let mut out = [(0, 0); 4];
++        for (i, &(x, y)) in cells.iter().enumerate() {
++            out[i] = (2 * x - px2, 2 * y - py2);
++        }
++        out.sort_unstable();
++        out
++    }
++
++    fn rotated_cw(cells: &[(i32, i32)], px2: i32, py2: i32) -> [(i32, i32); 4] {
++        let rel = scaled(cells, px2, py2);
++        let mut out = [(0, 0); 4];
++        for (i, &(rx, ry)) in rel.iter().enumerate() {
++            out[i] = (-ry, rx);
++        }
++        out.sort_unstable();
++        out
++    }
++
++    #[test]
++    fn rotations_are_consistent_rotations() {
++        for shape in Shape::ALL {
++            let (px2, py2) = if shape == Shape::I { (3, 3) } else { (2, 2) };
++            for r in 0..4 {
++                let cur = shape.cells(r);
++                let next = shape.cells(r + 1);
++                assert_eq!(
++                    scaled(next, px2, py2),
++                    rotated_cw(cur, px2, py2),
++                    "{shape:?} state {r} is not a CW rotation of the previous state"
++                );
++            }
++        }
++    }
++
++    #[test]
++    fn every_state_has_four_unique_cells() {
++        for shape in Shape::ALL {
++            for r in 0..4 {
++                let cells = shape.cells(r);
++                assert_eq!(cells.len(), 4);
++                let mut sorted = cells.to_vec();
++                sorted.sort_unstable();
++                sorted.dedup();
++                assert_eq!(sorted.len(), 4, "{shape:?} state {r} has duplicate cells");
++            }
++        }
++    }
++
++    #[test]
++    fn bag_yields_permutations_of_all_shapes() {
++        let mut g = game(1);
++        for _ in 0..3 {
++            let mut batch: Vec<u8> = (0..7).map(|_| g.draw_from_bag() as u8).collect();
++            batch.sort_unstable();
++            assert_eq!(batch, vec![0, 1, 2, 3, 4, 5, 6]);
++        }
++    }
++
++    #[test]
++    fn collides_with_walls_and_floor() {
++        let g = game(2);
++        let t = Piece { shape: Shape::T, rotation: 0, x: 0, y: 0 };
++        assert!(!g.collides(&t));
++        assert!(g.collides(&Piece { x: -1, ..t }));
++        assert!(g.collides(&Piece { x: 8, ..t }));
++        assert!(!g.collides(&Piece { y: (HEIGHT - 2) as i32, ..t }));
++        assert!(g.collides(&Piece { y: (HEIGHT - 1) as i32, ..t }));
++        // Cells above the top are allowed.
++        assert!(!g.collides(&Piece { y: -1, ..t }));
++    }
++
++    #[test]
++    fn collides_with_locked_cells() {
++        let mut g = game(3);
++        g.board.set(5, 5, Shape::O);
++        // T at (4,5) has a cell at (5,5).
++        assert!(g.collides(&Piece { shape: Shape::T, rotation: 0, x: 4, y: 5 }));
++        assert!(!g.collides(&Piece { shape: Shape::T, rotation: 0, x: 3, y: 5 }));
++    }
++
++    #[test]
++    fn piece_cells_are_absolute() {
++        let g = game(15);
++        let p = Piece { shape: Shape::O, rotation: 0, x: 3, y: 4 };
++        assert_eq!(g.piece_cells(&p), [(3, 4), (4, 4), (3, 5), (4, 5)]);
++    }
++
++    #[test]
++    fn ghost_y_is_landing_row() {
++        let mut g = game(16);
++        g.current = Piece { shape: Shape::I, rotation: 0, x: 0, y: 0 };
++        assert_eq!(g.ghost_y(), (HEIGHT - 2) as i32);
++        g.board.set(2, HEIGHT - 3, Shape::O);
++        assert_eq!(g.ghost_y(), (HEIGHT - 4) as i32);
++    }
++
++    #[test]
++    fn hard_drop_clears_line_and_scores() {
++        let mut g = game(4);
++        for x in 4..WIDTH {
++            g.board.set(x, HEIGHT - 1, Shape::O);
++        }
++        g.current = Piece { shape: Shape::I, rotation: 0, x: 0, y: 0 };
++        g.hard_drop();
++        assert_eq!(g.lines, 1);
++        assert_eq!(g.score, 18 * 2 + 100);
++        assert!(g.board.get(0, HEIGHT - 1).is_none());
++        assert_eq!(g.current.y, 0);
++    }
++
++    #[test]
++    fn tetris_clear_scores_800() {
++        let mut g = game(5);
++        for y in (HEIGHT - 4)..HEIGHT {
++            for x in 0..WIDTH {
++                if x != 2 {
++                    g.board.set(x, y, Shape::O);
++                }
++            }
++        }
++        g.current = Piece { shape: Shape::I, rotation: 1, x: 0, y: 0 };
++        g.hard_drop();
++        assert_eq!(g.lines, 4);
++        assert_eq!(g.score, 16 * 2 + 800);
++        for y in 0..HEIGHT {
++            for x in 0..WIDTH {
++                assert!(g.board.get(x, y).is_none(), "board should be empty at ({x},{y})");
++            }
++        }
++    }
++
++    #[test]
++    fn soft_drop_scores_and_locks_at_floor() {
++        let mut g = game(6);
++        g.current = Piece { shape: Shape::I, rotation: 0, x: 0, y: 0 };
++        let mut steps = 0;
++        while g.soft_drop() {
++            steps += 1;
++        }
++        assert_eq!(steps, HEIGHT - 2);
++        assert_eq!(g.score, steps as u32);
++        assert!(!g.soft_drop());
++        g.tick();
++        assert!(g.board.get(0, HEIGHT - 1).is_some());
++        assert_eq!(g.current.y, 0);
++    }
++
++    #[test]
++    fn tick_locks_piece_at_floor_and_spawns() {
++        let mut g = game(13);
++        let next_before = g.next;
++        g.current = Piece { shape: Shape::O, rotation: 0, x: 0, y: (HEIGHT - 2) as i32 };
++        g.tick();
++        assert!(g.board.get(0, HEIGHT - 1).is_some());
++        assert_eq!(g.current.shape, next_before);
++        assert_eq!(g.current.y, 0);
++    }
++
++    #[test]
++    fn game_over_when_spawn_collides() {
++        let mut g = game(7);
++        for y in 0..3 {
++            for x in 0..WIDTH {
++                g.board.set(x, y, Shape::O);
++            }
++        }
++        g.over = false;
++        g.spawn();
++        assert!(g.over);
++    }
++
++    #[test]
++    fn level_up_after_10_lines() {
++        let mut g = game(8);
++        g.lines = 9;
++        for x in 4..WIDTH {
++            g.board.set(x, HEIGHT - 1, Shape::O);
++        }
++        g.current = Piece { shape: Shape::I, rotation: 0, x: 0, y: 0 };
++        g.hard_drop();
++        assert_eq!(g.lines, 10);
++        assert_eq!(g.level, 2);
++    }
++
++    #[test]
++    fn delay_decreases_with_level() {
++        let mut g = game(9);
++        g.level = 1;
++        assert_eq!(g.delay_ms(), 500);
++        g.level = 10;
++        assert_eq!(g.delay_ms(), 140);
++        g.level = 11;
++        assert_eq!(g.delay_ms(), 100);
++        g.level = 12;
++        assert_eq!(g.delay_ms(), 80);
++        g.level = 100;
++        assert_eq!(g.delay_ms(), 80);
++    }
++
++    #[test]
++    fn rotation_uses_wall_kick_at_right_wall() {
++        let mut g = game(10);
++        g.current = Piece { shape: Shape::I, rotation: 1, x: 7, y: 0 };
++        g.rotate(1);
++        assert_eq!(g.current.rotation, 2);
++        assert_eq!(g.current.x, 6);
++    }
++
++    #[test]
++    fn rotation_uses_floor_kick() {
++        let mut g = game(12);
++        g.current = Piece { shape: Shape::I, rotation: 2, x: 0, y: (HEIGHT - 3) as i32 };
++        g.rotate(1);
++        assert_eq!(g.current.rotation, 3);
++        assert_eq!(g.current.y, (HEIGHT - 4) as i32);
++    }
++
++    #[test]
++    fn movement_is_blocked_by_walls() {
++        let mut g = game(17);
++        g.current = Piece { shape: Shape::T, rotation: 0, x: 0, y: 0 };
++        assert!(!g.move_left());
++        assert_eq!(g.current.x, 0);
++        assert!(g.move_right());
++        assert_eq!(g.current.x, 1);
++        assert!(!g.move_left());
++    }
++}
+
+[0m
+Let me fix the last assertion in the movement test (after moving right to x=1, moving left back to x=0 should succeed):
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -551,7 +551,8 @@
+         assert!(!g.move_left());
+         assert_eq!(g.current.x, 0);
+         assert!(g.move_right());
+         assert_eq!(g.current.x, 1);
+-        assert!(!g.move_left());
++        assert!(g.move_left());
++        assert_eq!(g.current.x, 0);
+     }
+ }
+
+[0m
+Now let me run the tests:
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo test 2>&1 | tail -50
+test game::tests::collides_with_locked_cells ... ok
+test game::tests::collides_with_walls_and_floor ... ok
+test game::tests::delay_decreases_with_level ... ok
+test game::tests::every_state_has_four_unique_cells ... ok
+test game::tests::game_over_when_spawn_collides ... ok
+test game::tests::ghost_y_is_landing_row ... FAILED
+test game::tests::hard_drop_clears_line_and_scores ... ok
+test game::tests::level_up_after_10_lines ... ok
+test game::tests::movement_is_blocked_by_walls ... ok
+test game::tests::piece_cells_are_absolute ... ok
+test game::tests::rotation_uses_floor_kick ... ok
+test game::tests::rotation_uses_wall_kick_at_right_wall ... ok
+test game::tests::rotations_are_consistent_rotations ... FAILED
+test game::tests::soft_drop_scores_and_locks_at_floor ... ok
+test game::tests::tetris_clear_scores_800 ... ok
+test game::tests::tick_locks_piece_at_floor_and_spawns ... ok
+
+failures:
+
+---- game::tests::bag_yields_permutations_of_all_shapes stdout ----
+
+thread 'game::tests::bag_yields_permutations_of_all_shapes' (8479) panicked at src/game.rs:384:13:
+assertion `left == right` failed
+  left: [0, 1, 1, 2, 3, 4, 6]
+ right: [0, 1, 2, 3, 4, 5, 6]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- game::tests::ghost_y_is_landing_row stdout ----
+
+thread 'game::tests::ghost_y_is_landing_row' (8485) panicked at src/game.rs:423:9:
+assertion `left == right` failed
+  left: 15
+ right: 16
+
+---- game::tests::rotations_are_consistent_rotations stdout ----
+
+thread 'game::tests::rotations_are_consistent_rotations' (8492) panicked at src/game.rs:355:17:
+assertion `left == right` failed: O state 0 is not a CW rotation of the previous state
+  left: [(-2, -2), (-2, 0), (0, -2), (0, 0)]
+ right: [(0, -2), (0, 0), (2, -2), (2, 0)]
+
+
+failures:
+    game::tests::bag_yields_permutations_of_all_shapes
+    game::tests::ghost_y_is_landing_row
+    game::tests::rotations_are_consistent_rotations
+
+test result: FAILED. 14 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--bin tetris`
+[0m
+Three test failures. Let me analyze: the bag test has an off-by-a-refill assumption, the ghost test had my arithmetic wrong, and O (a square) isn't a true rotation. Let me fix the tests.
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -347,8 +347,16 @@
+ 
+ #[test]
+ fn rotations_are_consistent_rotations() {
+     for shape in Shape::ALL {
++        if shape == Shape::O {
++            // The O piece is a square: every rotation state is identical.
++            let base = shape.cells(0).to_vec();
++            for r in 1..4 {
++                assert_eq!(shape.cells(r).to_vec(), base, "O state {r} should equal state 0");
++            }
++            continue;
++        }
+         let (px2, py2) = if shape == Shape::I { (3, 3) } else { (2, 2) };
+         for r in 0..4 {
+             let cur = shape.cells(r);
+             let next = shape.cells(r + 1);
+
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -385,8 +385,12 @@
+ 
+ #[test]
+ fn bag_yields_permutations_of_all_shapes() {
+     let mut g = game(1);
++    // Game::new already drew 2 shapes (next + current); draw 5 to exhaust bag one.
++    for _ in 0..5 {
++        g.draw_from_bag();
++    }
+     for _ in 0..3 {
+         let mut batch: Vec<u8> = (0..7).map(|_| g.draw_from_bag() as u8).collect();
+         batch.sort_unstable();
+         assert_eq!(batch, vec![0, 1, 2, 3, 4, 5, 6]);
+
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -430,10 +430,11 @@
+ fn ghost_y_is_landing_row() {
+     let mut g = game(16);
+     g.current = Piece { shape: Shape::I, rotation: 0, x: 0, y: 0 };
+     assert_eq!(g.ghost_y(), (HEIGHT - 2) as i32);
++    // I (rot 0) occupies row y+1; with a block at row 17 it must land on row 16.
+     g.board.set(2, HEIGHT - 3, Shape::O);
+-    assert_eq!(g.ghost_y(), (HEIGHT - 4) as i32);
++    assert_eq!(g.ghost_y(), (HEIGHT - 5) as i32);
+ }
+ 
+ #[test]
+ fn hard_drop_clears_line_and_scores() {
+
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo test 2>&1 | tail -30
+test game::tests::game_over_when_spawn_collides ... ok
+test game::tests::ghost_y_is_landing_row ... ok
+test game::tests::hard_drop_clears_line_and_scores ... ok
+test game::tests::level_up_after_10_lines ... ok
+test game::tests::movement_is_blocked_by_walls ... ok
+test game::tests::piece_cells_are_absolute ... ok
+test game::tests::rotation_uses_floor_kick ... ok
+test game::tests::rotation_uses_wall_kick_at_right_wall ... ok
+test game::tests::rotations_are_consistent_rotations ... FAILED
+test game::tests::soft_drop_scores_and_locks_at_floor ... ok
+test game::tests::tetris_clear_scores_800 ... ok
+test game::tests::tick_locks_piece_at_floor_and_spawns ... ok
+
+failures:
+
+---- game::tests::rotations_are_consistent_rotations stdout ----
+
+thread 'game::tests::rotations_are_consistent_rotations' (8626) panicked at src/game.rs:363:17:
+assertion `left == right` failed: J state 2 is not a CW rotation of the previous state
+  left: [(-2, -2), (-2, 0), (-2, 2), (0, 2)]
+ right: [(-2, 2), (0, -2), (0, 0), (0, 2)]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    game::tests::rotations_are_consistent_rotations
+
+test result: FAILED. 16 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--bin tetris`
+[0m
+The test caught a real bug: my J and L state-3 offsets aren't true CW rotations of state 2 (SRS rotations must be pure rotations within the bounding box, with kicks handling walls). Let me fix the table.
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -58,15 +58,15 @@
+         [
+             &[(0, 0), (0, 1), (1, 1), (2, 1)],
+             &[(1, 0), (2, 0), (1, 1), (1, 2)],
+             &[(0, 1), (1, 1), (2, 1), (2, 2)],
+-            &[(0, 0), (0, 1), (0, 2), (1, 2)],
++            &[(1, 0), (1, 1), (1, 2), (0, 2)],
+         ],
+         [
+             &[(2, 0), (0, 1), (1, 1), (2, 1)],
+             &[(1, 0), (1, 1), (1, 2), (2, 2)],
+             &[(0, 1), (1, 1), (2, 1), (0, 2)],
+-            &[(0, 0), (1, 0), (0, 1), (0, 2)],
++            &[(0, 0), (1, 0), (1, 1), (1, 2)],
+         ],
+     ];
+     ROTATIONS[self as usize][rotation % 4]
+ }
+
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo test 2>&1 | tail -30
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running unittests src/main.rs (target/debug/deps/tetris-f96f12d9bd7f7f8c)
+
+running 17 tests
+test game::tests::bag_yields_permutations_of_all_shapes ... ok
+test game::tests::collides_with_locked_cells ... ok
+test game::tests::collides_with_walls_and_floor ... ok
+test game::tests::delay_decreases_with_level ... ok
+test game::tests::every_state_has_four_unique_cells ... ok
+test game::tests::game_over_when_spawn_collides ... ok
+test game::tests::ghost_y_is_landing_row ... ok
+test game::tests::hard_drop_clears_line_and_scores ... ok
+test game::tests::movement_is_blocked_by_walls ... ok
+test game::tests::level_up_after_10_lines ... ok
+test game::tests::piece_cells_are_absolute ... ok
+test game::tests::rotation_uses_floor_kick ... ok
+test game::tests::rotation_uses_wall_kick_at_right_wall ... ok
+test game::tests::rotations_are_consistent_rotations ... ok
+test game::tests::soft_drop_scores_and_locks_at_floor ... ok
+test game::tests::tetris_clear_scores_800 ... ok
+test game::tests::tick_locks_piece_at_floor_and_spawns ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+[0m
+[0m# [0mTodos
+[✓] Init cargo project + add ratatui dep
+[✓] Implement core game logic (board, pieces, rotation, line clear, scoring)
+[✓] Implement ratatui UI + input loop
+[✓] Write unit tests for core logic
+[•] cargo build + clippy with zero errors/warnings
+[ ] Run in tmux, verify rendering and input
+[0m
+All 17 tests pass. Now let me update the todo and run clippy to find warnings.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo clippy --all-targets 2>&1 | tail -60
+Checking num_threads v0.1.7
+    Checking powerfmt v0.2.0
+    Checking linux-raw-sys v0.12.1
+    Checking deranged v0.5.8
+    Checking lock_api v0.4.14
+    Checking time-core v0.1.9
+    Checking num-conv v0.2.2
+    Checking compact_str v0.9.1
+    Checking rand_core v0.10.1
+    Checking line-clipping v0.3.8
+    Checking cpufeatures v0.3.1
+    Checking itertools v0.14.0
+    Checking chacha20 v0.10.2
+    Checking hashbrown v0.17.1
+    Checking hashbrown v0.16.1
+   Compiling convert_case v0.10.0
+    Checking rustix v1.1.5
+   Compiling derive_more-impl v2.1.1
+    Checking lru v0.18.5
+    Checking kasuari v0.4.12
+    Checking errno v0.3.14
+    Checking parking_lot_core v0.9.12
+    Checking mio v1.2.3
+    Checking getrandom v0.4.3
+    Checking signal-hook-registry v1.4.8
+    Checking rand v0.10.3
+    Checking parking_lot v0.12.5
+    Checking signal-hook v0.3.18
+    Checking time v0.3.55
+    Checking signal-hook-mio v0.2.5
+    Checking unicode-truncate v2.0.1
+    Checking ratatui-core v0.1.2
+    Checking derive_more v2.1.1
+    Checking crossterm v0.29.0
+    Checking ratatui-widgets v0.3.2
+    Checking ratatui-crossterm v0.1.2
+    Checking ratatui-macros v0.7.2
+    Checking ratatui v0.30.2
+    Checking tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+warning: constants have by default a `'static` lifetime
+  --> src/game.rs:27:29
+   |
+27 |         const ROTATIONS: [[&'static [(i32, i32)]; 4]; 7] = [
+   |                            -^^^^^^^------------- help: consider removing `'static`: `&[(i32, i32)]`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_static_lifetimes
+   = note: `#[warn(clippy::redundant_static_lifetimes)]` on by default
+
+warning: this `repeat().take()` can be written more concisely
+   --> src/game.rs:114:40
+    |
+114 |                 self.grid.splice(0..0, std::iter::repeat(None).take(WIDTH));
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `repeat_n()` instead: `std::iter::repeat_n(None, WIDTH)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_repeat_n
+    = note: `#[warn(clippy::manual_repeat_n)]` on by default
+
+warning: `tetris` (bin "tetris") generated 2 warnings (run `cargo clippy --fix --bin "tetris" -p tetris -- ` to apply 2 suggestions)
+warning: `tetris` (bin "tetris" test) generated 2 warnings (2 duplicates)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.34s
+[0m
+Let me fix the two clippy warnings.
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -23,9 +23,9 @@
+ 
+ /// Relative cell offsets for each of the four rotation states.
+ /// x grows to the right, y grows downward.
+ pub fn cells(self, rotation: usize) -> &'static [(i32, i32)] {
+-    const ROTATIONS: [[&'static [(i32, i32)]; 4]; 7] = [
++    const ROTATIONS: [[&[(i32, i32)]; 4]; 7] = [
+         [
+             &[(0, 1), (1, 1), (2, 1), (3, 1)],
+             &[(2, 0), (2, 1), (2, 2), (2, 3)],
+             &[(0, 2), (1, 2), (2, 2), (3, 2)],
+
+[0m
+[0m$ [0mrustc --version; rustc -Z help 2>/dev/null | head -1; echo "checking repeat_n stability via a quick probe:"; cat > /tmp/probe.rs <<'EOF'
+fn main(){ let v: Vec<Option<u8>> = std::iter::repeat_n(None, 3).collect(); println!("{v:?}"); }
+EOF
+rustc --edition 2021 /tmp/probe.rs -o /tmp/probe 2>&1 | head -5 && /tmp/probe
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+checking repeat_n stability via a quick probe:
+[None, None, None]
+[0m
+[0m← [0mEdit src/game.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/game.rs
+@@ -110,9 +110,9 @@
+ let mut y = 0;
+ while y < HEIGHT {
+     if self.row_full(y) {
+         self.grid.drain(y * WIDTH..(y + 1) * WIDTH);
+-        self.grid.splice(0..0, std::iter::repeat(None).take(WIDTH));
++        self.grid.splice(0..0, std::iter::repeat_n(None, WIDTH));
+         cleared += 1;
+     } else {
+         y += 1;
+     }
+
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo clippy --all-targets 2>&1 | tail -15 && echo "=== TEST ===" && cargo test 2>&1 | tail -8
+Checking tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s
+=== TEST ===
+test game::tests::rotation_uses_wall_kick_at_right_wall ... ok
+test game::tests::rotations_are_consistent_rotations ... ok
+test game::tests::soft_drop_scores_and_locks_at_floor ... ok
+test game::tests::tetris_clear_scores_800 ... ok
+test game::tests::tick_locks_piece_at_floor_and_spawns ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+[0m
+Clippy is clean and all tests pass. Let me confirm the build itself is warning-free and do a release build.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && touch src/main.rs src/game.rs && cargo build 2>&1 | tail -10 && echo "=== RELEASE ===" && cargo build --release 2>&1 | tail -5
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.40s
+=== RELEASE ===
+   Compiling ratatui-crossterm v0.1.2
+   Compiling ratatui-macros v0.7.2
+   Compiling ratatui v0.30.2
+   Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+    Finished `release` profile [optimized] target(s) in 4.19s
+[0m
+Both builds are clean. Now let me run the game in tmux to verify it actually renders and works like a user would.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux kill-session -t check 2>/dev/null; tmux new -d -s check -x 100 -y 40 ./target/release/tetris; sleep 2; tmux capture-pane -p -t check
+no server running on /tmp/tmux-1000/default
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux ls 2>&1; echo "---capturing---"; tmux capture-pane -p -t check 2>&1
+no server running on /tmp/tmux-1000/default
+---capturing---
+no server running on /tmp/tmux-1000/default
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux new-session -d -s check -x 100 -y 40 "./target/release/tetris" 2>&1; echo "exit=$?"; sleep 2; tmux ls 2>&1
+exit=0
+check: 1 windows (created Thu Oct  1 11:56:38 2026)
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux capture-pane -p -t check
+┌ TETRIS ──┐┌ Next ────────────────────────────────────##──────────────────────────────────────────┐
+│          ││                                          ##                                          │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│   ██     │┌Score:  0─────────────────────────────────────────────────────────────────────────────┐
+│    ██    ││Level:  1                                                                             │
+│          ││Lines:  0                                                                             │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│          │┌arrows: move / rotate─────────────────────────────────────────────────────────────────┐
+│          ││down: soft drop                                                                       │
+│          ││space: hard drop                                                                      │
+│          ││z / x: rotate                                                                         │
+│          ││p: pause                                                                              │
+│          ││enter: restart                                                                        │
+│          ││q / esc: quit                                                                         │
+│          ││                                                                                      │
+│   ▒▒     ││                                                                                      │
+│    ▒▒    ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+└──────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+[0m
+The game renders correctly: falling piece, ghost piece at the landing row, Next preview, stats, and controls all visible. Let me test input — move left, rotate, and hard drop.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux send-keys -t check Left; tmux send-keys -t check Left; tmux send-keys -t check Left; tmux send-keys -t check Up; sleep 0.3; tmux send-keys -t check Space; sleep 0.5; tmux capture-pane -p -t check
+no server running on /tmp/tmux-1000/default
+[0m
+The tmux server died — the game may have crashed. Let me relaunch it capturing stderr to see what happened.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && rm -f /tmp/tetris.err && tmux new-session -d -s check -x 100 -y 40 "sh -c './target/release/tetris >/tmp/tetris.err 2>&1; echo EXITED_\$? >> /tmp/tetris.err'"; sleep 2; tmux ls 2>&1; echo "--- err ---"; cat /tmp/tetris.err
+no server running on /tmp/tmux-1000/default
+--- err ---
+[?1049h[?1049l
+thread 'main' (10955) panicked at src/main.rs:213:27:
+assertion failed: self.is_char_boundary(idx)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+EXITED_101
+[0m
+[0m→ [0mRead src/main.rs[90m [offset=198, limit=30][0m
+Found it: `next_piece_lines` inserts `#` at index `x` into empty strings, but `insert(1, _)` on an empty string isn't a char boundary. I need to pre-pad the rows to the max piece width (4).
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -207,16 +207,17 @@
+     );
+ }
+ 
+ fn next_piece_lines(shape: Shape) -> Vec<Line<'static>> {
+-    let mut rows = vec![String::new(), String::new(), String::new(), String::new()];
++    // Pre-pad to the max piece width so `insert` stays on a char boundary.
++    let mut rows: Vec<String> = (0..4).map(|_| "    ".to_string()).collect();
+     for (x, y) in shape.cells(0) {
+         rows[*y as usize].insert(*x as usize, '#');
+     }
+     rows.into_iter()
+         .map(|row| {
+             let trimmed: String = row.chars().filter(|c| *c != ' ').collect();
+-            Line::from(trimmed)
++            Line::from(if trimmed.is_empty() { " " } else { trimmed })
+         })
+         .collect()
+ }
+ 
+
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -215,9 +215,9 @@
+     }
+     rows.into_iter()
+         .map(|row| {
+             let trimmed: String = row.chars().filter(|c| *c != ' ').collect();
+-            Line::from(if trimmed.is_empty() { " " } else { trimmed })
++            Line::from(if trimmed.is_empty() { " ".to_string() } else { trimmed })
+         })
+         .collect()
+ }
+ 
+
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo build --release 2>&1 | tail -8 && echo "=== CLIPPY ===" && cargo clippy --all-targets 2>&1 | grep -E "warning|error|Finished" | tail -10
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+    Finished `release` profile [optimized] target(s) in 0.53s
+=== CLIPPY ===
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+[0m
+Now let me run it in tmux again and test input thoroughly.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux kill-server 2>/dev/null; rm -f /tmp/tetris.err; tmux new-session -d -s check -x 100 -y 40 "sh -c './target/release/tetris >/tmp/tetris.err 2>&1; echo EXITED_\$? >> /tmp/tetris.err'"; sleep 2; tmux ls 2>&1; echo "=== initial ==="; tmux capture-pane -p -t check | head -14
+check: 1 windows (created Thu Oct  1 11:57:14 2026)
+=== initial ===
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux capture-pane -p -t check
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux ls 2>&1; echo "--- err ---"; cat /tmp/tetris.err
+check: 1 windows (created Thu Oct  1 11:57:14 2026)
+--- err ---
+[?1049h[1;1H┌[1m TETRIS [22m──┐┌[1;15HNext[1;20H────────────────────────────────────##──────────────────────────────────────────┐[2;1H│[2;6H[1m[38;5;2;49m██[2;12H[22m[39;49m││[2;56H##[2;100H│[3;1H│[3;5H[1m[38;5;2;49m██[3;12H[22m[39;49m││[3;100H│[4;1H│[4;12H││[4;100H│[5;1H│[5;12H││[5;100H│[6;1H│[6;12H│└──────────────────────────────────────────────────────────────────────────────────────┘[7;1H│[7;12H│┌Score:[7;22H0─────────────────────────────────────────────────────────────────────────────┐[8;1H│[8;12H││Level:[8;22H1[8;100H│[9;1H│[9;12H││Lines:[9;22H0[9;100H│[10;1H│[10;12H││[10;100H│[11;1H│[11;12H│└──────────────────────────────────────────────────────────────────────────────────────┘[12;1H│[12;12H│┌arrows:[12;22Hmove[12;27H/[12;29Hrotate─────────────────────────────────────────────────────────────────┐[13;1H│[13;12H││down:[13;20Hsoft[13;25Hdrop[13;100H│[14;1H│[14;12H││space:[14;21Hhard[14;26Hdrop[14;100H│[15;1H│[15;12H││z[15;16H/[15;18Hx:[15;21Hrotate[15;100H│[16;1H│[16;12H││p:[16;17Hpause[16;100H│[17;1H│[17;12H││enter:[17;21Hrestart[17;100H│[18;1H│[18;12H││q[18;16H/[18;18Hesc:[18;23Hquit[18;100H│[19;1H│[19;12H││[19;100H│[20;1H│[20;6H[38;5;2;49m▒▒[20;12H[39;49m││[20;100H│[21;1H│[21;5H[38;5;2;49m▒▒[21;12H[39;49m││[21;100H│[22;1H│[22;12H││[22;100H│[23;1H│[23;12H││[23;100H│[24;1H│[24;12H││[24;100H│[25;1H│[25;12H││[25;100H│[26;1H│[26;12H││[26;100H│[27;1H│[27;12H││[27;100H│[28;1H│[28;12H││[28;100H│[29;1H│[29;12H││[29;100H│[30;1H│[30;12H││[30;100H│[31;1H│[31;12H││[31;100H│[32;1H│[32;12H││[32;100H│[33;1H│[33;12H││[33;100H│[34;1H│[34;12H││[34;100H│[35;1H│[35;12H││[35;100H│[36;1H│[36;12H││[36;100H│[37;1H│[37;12H││[37;100H│[38;1H│[38;12H││[38;100H│[39;1H│[39;12H││[39;100H│[40;1H└──────────┘└──────────────────────────────────────────────────────────────────────────────────────┘[39m[49m[59m[0m[?25l[2;6H  [3;5H [3;7H[1m[38;5;2;49m█[4;5H██[39m[49m[59m[0m[?25l[3;6H  [4;5H [4;7H[1m[38;5;2;49m█[5;5H██[39m[49m[59m[0m[?25l[4;6H  [5;5H [5;7H[1m[38;5;2;49m█[6;5H██[39m[49m[59m[0m[?25l[5;6H  [6;5H [6;7H[1m[38;5;2;49m█[7;5H██[39m[49m[59m[0m[?25l[6;6H  [7;5H [7;7H[1m[38;5;2;49m█[8;5H██[39m[49m[59m[0m[?25l[7;6H  [8;5H [8;7H[1m[38;5;2;49m█[9;5H██[39m[49m[59m[0m[?25l[8;6H  [9;5H [9;7H[1m[38;5;2;49m█[10;5H██[39m[49m[59m[0m[?25l[9;6H  [10;5H [10;7H[1m[38;5;2;49m█[11;5H██[39m[49m[59m[0m[?25l[10;6H  [11;5H [11;7H[1m[38;5;2;49m█[12;5H██[39m[49m[59m[0m[?25l
+[0m
+The game is running and rendering (the err file just captured the alt-screen output). Now let me test input: move left, rotate, and hard drop.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux send-keys -t check Left; tmux send-keys -t check Left; tmux send-keys -t check Left; sleep 0.4; tmux send-keys -t check Space; sleep 0.6; echo "=== after hard drop (left x3) ==="; tmux capture-pane -p -t check
+=== after hard drop (left x3) ===
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux ls 2>&1; echo "---"; tmux capture-pane -p -t check > /tmp/cap.txt 2>/tmp/caperr.txt; echo "capture exit=$?"; echo "=== stdout bytes: $(wc -c < /tmp/cap.txt) ==="; echo "=== stderr ==="; cat /tmp/caperr.txt; echo "=== file ==="; cat -A /tmp/cap.txt | head -20
+check: 1 windows (created Thu Oct  1 11:57:14 2026)
+---
+capture exit=0
+=== stdout bytes: 40 ===
+=== stderr ===
+=== file ===
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+$
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && grep -a "EXITED\|panicked" /tmp/tetris.err; echo "--- (empty means still running, no panic) ---"; sleep 1.5; tmux capture-pane -p -t check | head -12
+--- (empty means still running, no panic) ---
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && for i in 1 2 3; do sleep 0.7; echo "=== attempt $i ==="; tmux capture-pane -p -t check | grep -c '█\|▒\|┌\|│'; done
+=== attempt 1 ===
+0
+=== attempt 2 ===
+0
+=== attempt 3 ===
+0
+[0m
+The screen is fully blank though the session persists. Let me check if the tetris process is actually alive and what it's doing.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && ps aux | grep -E "tetris|sh -c" | grep -v grep; echo "--- pane info ---"; tmux display-message -p -t check "#{pane_pid} #{pane_dead} #{pane_width}x#{pane_height}"
+gud       6602  0.0  0.0   4764  3456 ?        S    11:48   0:00 /bin/bash /home/gud/bench-harnesses/bench-tetris.sh opencode 27b+rules 1
+gud       6612  0.0  0.0   3144  1920 ?        S    11:48   0:00 timeout 2400 /home/gud/bench-harnesses/run-harness.sh opencode /home/gud/bench-harnesses/results/27b+rules-opencode-1 /home/gud/bench-harnesses/tetris-prompt.txt
+gud       6613  0.0  0.0   4764  3456 ?        S    11:48   0:00 /bin/bash /home/gud/bench-harnesses/run-harness.sh opencode /home/gud/bench-harnesses/results/27b+rules-opencode-1 /home/gud/bench-harnesses/tetris-prompt.txt
+gud       8351  0.0  0.0   4896  3584 ?        Ss   11:53   0:00 /bin/bash -c source /home/gud/.claude/shell-snapshots/snapshot-bash-1790843313311-7jxy2v.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'tail -n 0 -F /home/gud/bench-harnesses/results/levers2.txt /home/gud/bench-harnesses/results/results.jsonl 2>/dev/null | python3 -u -c '"'"' import json,sys for l in sys.stdin:     l=l.strip()     if not l or l.startswith("==>"): continue     if l.startswith("{"):         try: r=json.loads(l)         except Exception: continue         print("%s: %ss %sreq | build=%s clippy=%s | %s lines" % (r["id"], r["seconds"], r["requests"], r.get("build_ok"), r.get("clippy_warnings"), r.get("rust_lines")), flush=True)     elif "DONE" in l or "rror" in l or "fails" in l:         print(l, flush=True)'"'"'' < /dev/null && pwd -P >| /tmp/claude-89f6-cwd
+gud      11062  0.0  0.0   9780  4300 ?        Ss   11:57   0:00 tmux new-session -d -s check -x 100 -y 40 sh -c './target/release/tetris >/tmp/tetris.err 2>&1; echo EXITED_$? >> /tmp/tetris.err'
+gud      11063  0.0  0.0   2812  1664 pts/1    Ss+  11:57   0:00 sh -c ./target/release/tetris >/tmp/tetris.err 2>&1; echo EXITED_$? >> /tmp/tetris.err
+gud      11064  0.0  0.0   3984  2816 pts/1    S+   11:57   0:00 ./target/release/tetris
+gud      27705  0.0  0.0   4896  1988 ?        S    11:23   0:00 /bin/bash -c source /home/gud/.claude/shell-snapshots/snapshot-bash-1790843313311-7jxy2v.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd ~/bench-harnesses && rm -rf "results/27b+rules-codex-1" "results/27b+rules-codex-1.log" && python3 - <<'"'"'EOF'"'"' s=open('"'"'levers.sh'"'"').read() body_start=s.index('"'"'switch_model 27b'"'"') new_body='"'"''"'"''"'"'# continued 2026-10-01 after the first lever job hit the tool'"'"'s background time limit for spec in "codex 1" "qwen 1" "opencode 1" "hermes 2" "codex 2" "qwen 2" "opencode 2"; do   set -- $spec   RULES=$B/rules/AGENTS.md $B/bench-tetris.sh $1 27b+rules $2 > /dev/null; log "done 27b+rules-$1-$2" done $B/gui-all.sh log LEVERS-DONE '"'"''"'"''"'"' open('"'"'levers2.sh'"'"','"'"'w'"'"').write(s[:body_start]+new_body) EOF chmod +x levers2.sh && bash -n levers2.sh && setsid nohup ./levers2.sh > results/levers2.txt 2>&1 < /dev/null & sleep 2; ps -eo pid,args | awk '"'"'$3=="./levers2.sh" || $3 ~ /levers2/'"'"' | head -2' && pwd -P >| /tmp/claude-bfb0-cwd
+--- pane info ---
+11063 0 100x40
+[0m
+The tetris process (PID 11064) is alive at 100x40 but the pane is blank. Let me probe the state — send pause and a move, capturing after each.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux send-keys -t check p; sleep 1; echo "=== after 'p' ==="; tmux capture-pane -p -t check | grep -nE '█|▒|┌|PAUSED|GAME|│' | head; echo "nonblank lines: $(tmux capture-pane -p -t check | grep -cvE '^\s*$')"
+=== after 'p' ===
+nonblank lines: 0
+[0m
+Even pause leaves it blank — the game is alive but stopped drawing. Let me determine if this happens without any input: restart, let pieces fall by gravity only, and capture over time.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux kill-server 2>/dev/null; rm -f /tmp/tetris.err; tmux new-session -d -s check -x 100 -y 40 "sh -c './target/release/tetris >/tmp/tetris.err 2>&1; echo EXITED_\$? >> /tmp/tetris.err'"; for t in 2 4 6 8 10; do sleep 2; echo "=== t=${t}s nonblank=$(tmux capture-pane -p -t check | grep -cvE '^\s*$') ==="; done; grep -a "EXITED\|panicked" /tmp/tetris.err
+=== t=2s nonblank=0 ===
+=== t=4s nonblank=0 ===
+=== t=6s nonblank=0 ===
+=== t=8s nonblank=0 ===
+=== t=10s nonblank=0 ===
+[0m
+That's the key insight: I was redirecting tetris's stdout to a file, so the tmux pane stayed blank while the rendering went to the file. The game was actually fine. The earlier crash was the `insert` bug (now fixed) hitting a T next-piece. Let me run the current binary directly in tmux (no redirection) and test properly.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux kill-server 2>/dev/null; tmux new-session -d -s check -x 100 -y 40 "./target/release/tetris"; sleep 2.5; echo "session alive: $(tmux has-session -t check 2>/dev/null && echo yes || echo NO)"; tmux capture-pane -p -t check | sed -n '1,14p'
+session alive: yes
+┌ TETRIS ──┐┌ Next ────────────────────────────────────##──────────────────────────────────────────┐
+│          ││                                          ##                                          │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│    ██    │┌Score:  0─────────────────────────────────────────────────────────────────────────────┐
+│   ██     ││Level:  1                                                                             │
+│          ││Lines:  0                                                                             │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│          │┌arrows: move / rotate─────────────────────────────────────────────────────────────────┐
+│          ││down: soft drop                                                                       │
+│          ││space: hard drop                                                                      │
+[0m
+Rendering works. Now let me test input: move left, rotate, and hard drop, then verify the piece locks and score updates.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux send-keys -t check Left; tmux send-keys -t check Left; tmux send-keys -t check Up; sleep 0.3; tmux send-keys -t check Space; sleep 0.8; echo "=== after Left,Left,Up,Space (hard drop) ==="; tmux capture-pane -p -t check | sed -n '1,12p'
+=== after Left,Left,Up,Space (hard drop) ===
+┌ TETRIS ──┐┌ Next ─────────────────────────────────────#──────────────────────────────────────────┐
+│          ││                                          ###                                         │
+│   ██     ││                                                                                      │
+│   ██     ││                                                                                      │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│          │┌Score:  12────────────────────────────────────────────────────────────────────────────┐
+│          ││Level:  1                                                                             │
+│          ││Lines:  0                                                                             │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│          │┌arrows: move / rotate─────────────────────────────────────────────────────────────────┐
+[0m
+Score went 0→12 (hard drop bonus) and a new piece spawned. Let me view the full board to confirm the dropped piece locked at the bottom and the ghost updates.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux capture-pane -p -t check | sed -n '1,40p'
+┌ TETRIS ──┐┌ Next ─────────────────────────────────────#──────────────────────────────────────────┐
+│          ││                                          ###                                         │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│          │┌Score:  12────────────────────────────────────────────────────────────────────────────┐
+│          ││Level:  1                                                                             │
+│   ██     ││Lines:  0                                                                             │
+│   ██     ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│          │┌arrows: move / rotate─────────────────────────────────────────────────────────────────┐
+│          ││down: soft drop                                                                       │
+│          ││space: hard drop                                                                      │
+│          ││z / x: rotate                                                                         │
+│          ││p: pause                                                                              │
+│          ││enter: restart                                                                        │
+│   ▒▒     ││q / esc: quit                                                                         │
+│  █▒▒     ││                                                                                      │
+│  ██      ││                                                                                      │
+│   █      ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+└──────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+[0m
+Let me capture the settled state after a moment to confirm the locked piece and new falling piece render correctly.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && sleep 3; tmux capture-pane -p -t check | sed -n '18,30p'
+│   ██     ││q / esc: quit                                                                         │
+│  ███     ││                                                                                      │
+│  ██      ││                                                                                      │
+│   █      ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+[0m
+The game works, but I notice a layout issue: the board block is stretched to the full terminal height (40 rows) while the grid is only 20 rows, leaving a big empty area at the bottom of the board. A Tetris board should be exactly 22 rows (20 + border). Let me fix the layout to size and vertically center the board properly.
+[0m→ [0mRead src/main.rs[90m [offset=108, limit=40][0m
+[0m→ [0mRead src/main.rs[90m [offset=88, limit=26][0m
+[0m
+[0m← [0mEdit src/main.rs
+Index: /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+===================================================================
+--- /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
++++ /home/gud/bench-harnesses/results/27b+rules-opencode-1/src/main.rs
+@@ -95,12 +95,20 @@
+     );
+     return;
+ }
+ 
++// The playfield is exactly the grid plus its border; center it vertically.
++let content_height = (HEIGHT + 2) as u16;
++let content = Rect {
++    x: size.x,
++    y: size.y + size.height.saturating_sub(content_height) / 2,
++    width: size.width,
++    height: content_height,
++};
+ let layout = Layout::default()
+     .direction(Direction::Horizontal)
+     .constraints([Constraint::Length(WIDTH as u16 + 2), Constraint::Min(22)])
+-    .split(size);
++    .split(content);
+ let board = layout[0];
+ let side = layout[1];
+ 
+ draw_board(f, game, board);
+
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && cargo build --release 2>&1 | tail -4 && cargo clippy --all-targets 2>&1 | grep -E "warning|error" | head; echo "clippy done (empty above = clean)"
+Compiling tetris v0.1.0 (/home/gud/bench-harnesses/results/27b+rules-opencode-1)
+    Finished `release` profile [optimized] target(s) in 0.54s
+clippy done (empty above = clean)
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux kill-server 2>/dev/null; tmux new-session -d -s check -x 100 -y 40 "./target/release/tetris"; sleep 2; tmux capture-pane -p -t check
+┌ TETRIS ──┐┌ Next ────────────────────────────────────##──────────────────────────────────────────┐
+│          ││                                          ##                                          │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│    █     │└──────────────────────────────────────────────────────────────────────────────────────┘
+│   ███    │┌Score:  0─────────────────────────────────────────────────────────────────────────────┐
+│          ││Level:  1                                                                             │
+│          ││Lines:  0                                                                             │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│          │┌arrows: move / rotate─────────────────────────────────────────────────────────────────┐
+│          ││down: soft drop                                                                       │
+│          ││space: hard drop                                                                      │
+│          ││z / x: rotate                                                                         │
+│          ││p: pause                                                                              │
+│          ││enter: restart                                                                        │
+│          ││q / esc: quit                                                                         │
+│          ││                                                                                      │
+│    ▒     ││                                                                                      │
+│   ▒▒▒    ││                                                                                      │
+└──────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+[0m
+The board is now exactly 22 rows (not stretched) — the fix worked. But it's top-aligned rather than centered. Let me check the actual pane height to see why.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux display-message -p -t check "pane=#{pane_width}x#{pane_height}"
+pane=100x40
+[0m
+[0m→ [0mRead src/main.rs[90m [offset=86, limit=36][0m
+Let me re-read my edited layout code to verify it's correct:
+The code looks right. Let me empirically test centering with a different pane height to see if the board position tracks it:
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux kill-server 2>/dev/null; tmux new-session -d -s check -x 100 -y 30 "./target/release/tetris"; sleep 2; echo "pane height 30; board top border at line:"; tmux capture-pane -p -t check | grep -n "TETRIS" ; echo "total lines: $(tmux capture-pane -p -t check | wc -l)"; echo "bottom border line:"; tmux capture-pane -p -t check | grep -n "└──────────┘"
+pane height 30; board top border at line:
+5:┌ TETRIS ──┐┌ Next ────────────────────────────────────##──────────────────────────────────────────┐
+total lines: 30
+bottom border line:
+26:└──────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+[0m
+Centering works at height 30 (board at row 4 = (30-22)/2). Let me re-verify at height 40 — I may have miscounted earlier.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux kill-server 2>/dev/null; tmux new-session -d -s check -x 100 -y 40 "./target/release/tetris"; sleep 2; echo "board top border line (1-indexed):"; tmux capture-pane -p -t check | grep -n "TETRIS"; echo "expected start row (0-idx) = $(python3 -c 'print((40-22)//2)') -> line $(( (40-22)//2 + 1 ))"
+server exited unexpectedly
+board top border line (1-indexed):
+no server running on /tmp/tmux-1000/default
+/bin/bash: line 1: (40-22)//2 + 1 : syntax error: operand expected (error token is "/2 + 1 ")
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && sleep 1; tmux kill-server 2>/dev/null; sleep 0.5; tmux new-session -d -s check -x 100 -y 40 "./target/release/tetris"; sleep 2; echo "board top border line (1-indexed):"; tmux capture-pane -p -t check | grep -n "TETRIS"; python3 -c "print('expected line =', (40-22)//2 + 1)"
+board top border line (1-indexed):
+10:┌ TETRIS ──┐┌ Next ────────────────────────────────────##──────────────────────────────────────────┐
+expected line = 10
+[0m
+Centering is working correctly (board at line 10 = expected). Let me do a final full capture to confirm the complete layout.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux capture-pane -p -t check
+┌ TETRIS ──┐┌ Next ────────────────────────────────────##──────────────────────────────────────────┐
+│          ││                                          ##                                          │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│          │┌Score:  0─────────────────────────────────────────────────────────────────────────────┐
+│          ││Level:  1                                                                             │
+│          ││Lines:  0                                                                             │
+│          ││                                                                                      │
+│          │└──────────────────────────────────────────────────────────────────────────────────────┘
+│     █    │┌arrows: move / rotate─────────────────────────────────────────────────────────────────┐
+│   ███    ││down: soft drop                                                                       │
+│          ││space: hard drop                                                                      │
+│          ││z / x: rotate                                                                         │
+│          ││p: pause                                                                              │
+│          ││enter: restart                                                                        │
+│          ││q / esc: quit                                                                         │
+│          ││                                                                                      │
+│     ▒    ││                                                                                      │
+│   ▒▒▒    ││                                                                                      │
+└──────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux display-message -p -t check "pane=#{pane_width}x#{pane_height}"; echo "capture lines: $(tmux capture-pane -p -t check | wc -l)"
+pane=100x40
+capture lines: 40
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && echo "lines 8-12 (should show blank then board top at line 10):"; tmux capture-pane -p -t check | sed -n '8,12p' | cat -A | cut -c1-30; echo "line 23-25 (should be blank below centered board):"; tmux capture-pane -p -t check | sed -n '23,25p' | cat -A | cut -c1-30
+lines 8-12 (should show blank then board top at line 10):
+$
+$
+M-bM-^TM-^L TETRIS M-bM-^TM-^@
+M-bM-^TM-^B          M-bM-^TM-
+M-bM-^TM-^B          M-bM-^TM-
+line 23-25 (should be blank below centered board):
+M-bM-^TM-^B   M-bM-^VM-^HM-bM-
+M-bM-^TM-^B          M-bM-^TM-
+M-bM-^TM-^B   M-bM-^VM-^RM-bM-
+[0m
+Centering confirmed: blank rows above, board starts at line 10. The layout is correct (exactly 22 rows, centered). Now let me test pause and clean quit (terminal restore).
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux send-keys -t check p; sleep 0.6; echo "=== PAUSED overlay ==="; tmux capture-pane -p -t check | grep -nE "PAUSED|press p"; echo "=== resume ==="; tmux send-keys -t check p; sleep 0.6; tmux capture-pane -p -t check | grep -cE "PAUSED"
+=== PAUSED overlay ===
+19:│          ││                     ┌PAUSED────────────────────────┐                                 │
+20:│          │└─────────────────────────────press p to resume────────────────────────────────────────┘
+=== resume ===
+0
+[0m
+Pause works (overlay appears, then clears). Now test clean quit — the session should close when tetris exits.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux send-keys -t check q; sleep 1; echo "session after quit: $(tmux has-session -t check 2>/dev/null && echo STILL-RUNNING || echo 'closed (clean exit)')"; ps aux | grep -c "[t]etris"
+session after quit: closed (clean exit)
+4
+[0m
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && ps aux | grep "target/release/tetris" | grep -v grep | wc -l | xargs echo "tetris binary processes remaining:"
+tetris binary processes remaining: 0
+[0m
+Clean quit confirmed. Let me run the full verification suite and also test the debug binary (which has stricter assertions) in tmux.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && echo "=== BUILD (dev) ===" && cargo build 2>&1 | grep -iE "warning|error" | head; echo "(empty=clean)"; echo "=== CLIPPY ===" && cargo clippy --all-targets 2>&1 | grep -iE "warning|error" | head; echo "(empty=clean)"; echo "=== TEST ===" && cargo test 2>&1 | grep -E "test result|running"
+=== BUILD (dev) ===
+(empty=clean)
+=== CLIPPY ===
+(empty=clean)
+=== TEST ===
+running 17 tests
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+[0m
+All clean. Let me run the debug binary (with active assertions) in tmux and exercise input to be thorough.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux kill-server 2>/dev/null; sleep 0.5; tmux new-session -d -s check -x 100 -y 30 "./target/debug/tetris"; sleep 2; echo "alive: $(tmux has-session -t check 2>/dev/null && echo yes || echo NO)"; tmux send-keys -t check Left; tmux send-keys -t check Down; tmux send-keys -t check x; tmux send-keys -t check z; tmux send-keys -t check Space; sleep 0.8; echo "after moves+rotate+harddrop, score line:"; tmux capture-pane -p -t check | grep -E "Score"
+alive: yes
+after moves+rotate+harddrop, score line:
+│          │┌Score:  27────────────────────────────────────────────────────────────────────────────┐
+[0m
+Debug binary works with input (score updated, no assertion failures). Let me stress-test by hard-dropping many pieces to confirm long-term stability.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && for i in $(seq 1 12); do tmux send-keys -t check Space; sleep 0.45; done; sleep 0.5; echo "alive: $(tmux has-session -t check 2>/dev/null && echo yes || echo 'NO (game over -> would need restart)')"; tmux capture-pane -p -t check | grep -E "Score|Lines|GAME OVER"
+alive: yes
+│    ██    │┌Score:  189───────────────────────────────────────────────────────────────────────────┐
+│    █     ││Lines:  0                                                                             │
+│   ███    ││                     ┌GAME OVER─────────────────────┐                                 │
+[0m
+Game over triggered correctly with the overlay. Now test restart with Enter.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux send-keys -t check Enter; sleep 1; echo "after Enter (restart):"; tmux capture-pane -p -t check | grep -E "Score|Level|Lines|GAME OVER"; echo "alive: $(tmux has-session -t check 2>/dev/null && echo yes || echo NO)"
+after Enter (restart):
+│          │┌Score:  0─────────────────────────────────────────────────────────────────────────────┐
+│          ││Level:  1                                                                             │
+│          ││Lines:  0                                                                             │
+alive: yes
+[0m
+Restart works (score/level/lines reset, overlay gone). All features verified. Let me clean up the tmux session and finalize.
+[0m$ [0mcd /home/gud/bench-harnesses/results/27b+rules-opencode-1 && tmux send-keys -t check q 2>/dev/null; sleep 0.5; tmux kill-server 2>/dev/null; echo "cleaned up"; ls src/
+cleaned up
+game.rs
+main.rs
+[0m
+[0m# [0mTodos
+[✓] Init cargo project + add ratatui dep
+[✓] Implement core game logic (board, pieces, rotation, line clear, scoring)
+[✓] Implement ratatui UI + input loop
+[✓] Write unit tests for core logic
+[✓] cargo build + clippy with zero errors/warnings
+[✓] Run in tmux, verify rendering and input
+[0m
+Tetris is complete. Summary:
+
+**What I built** — a Rust + ratatui Tetris game in `src/game.rs` (pure logic) and `src/main.rs` (terminal UI).
+
+- **Game logic** (`src/game.rs`): 10×20 board, all 7 tetrominoes with SRS-style rotation (pure rotations + wall/floor kicks), 7-bag randomizer, ghost piece, soft/hard drop, line clearing, and scoring (100/300/500/800 × level, +drop bonuses), with level speed-up.
+- **UI** (`src/main.rs`): ratatui layout with a bordered, color-coded board, next-piece preview, score/level/lines, and a controls panel; pause and game-over/restart overlays.
+- **Controls**: arrows move/rotate, ↓ soft drop, space hard drop, z/x rotate, p pause, enter restart, q/esc quit.
+
+**Verification**
+- `cargo build` (dev + release): zero warnings
+- `cargo clippy --all-targets`: zero warnings
+- `cargo test`: 17 tests pass (rotation consistency, collision, line/tetris clear + scoring, bag distribution, game over, kicks, gravity)
+- Ran it in tmux and confirmed like a user: board/pieces/ghost render and align, input moves/rotates/drops pieces, score updates, pause and game-over overlays appear, restart resets, and `q` exits cleanly.
+
+Two real bugs were caught and fixed along the way: an `O`/`J`/`L` rotation-state table that wasn't a true rotation (found by a unit test), and a `String::insert` char-boundary panic in the next-piece preview.

@@ -1,0 +1,19 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Configure tools.executionSandbox on Linux or a supported legacy sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Complete. All checks pass:
+
+**Verification**
+- `cargo build` (debug + release): **0 errors, 0 warnings**
+- `cargo clippy --all-targets`: **0 warnings**
+- `cargo test`: **16/16 passed**
+- Live play in tmux (100×40): board, ghost, next-queue and hold render correctly; move/rotate/hold/soft-drop/hard-drop/pause/resume/quit all verified; terminal fully restored after quit (shell ran fine afterward)
+
+**What was built** — a full terminal Tetris in `/home/gud/bench-harnesses/results/27b+rules-qwen-2`:
+
+| File | Contents |
+|---|---|
+| `src/game.rs` | Pure, side-effect-free game logic: 10×20 board, all 7 SRS tetrominoes with wall-kick tables, 7-bag randomizer (deterministic SplitMix64 seed), ghost row, hold, soft/hard drop, line clears, guideline scoring (100/300/500/800 × level), level-up every 10 lines, top-out detection — plus 16 unit tests covering rotation math, kicks, bag fairness, scoring, locking, and game-over |
+| `src/main.rs` | ratatui UI: bordered playfield with color-coded pieces (active bold, ghost dim), sidebar with score/status/next-3/hold, full-width controls footer, centered pause/game-over overlays, "terminal too small" guard, and a fixed-tick event loop with level-based gravity (800 ms → 60 ms) |
+
+**Controls**: ←→/AD move · ↓/S soft drop · ↑/X rotate · Z rotate ccw · Space hard drop · C hold · P pause · R restart (on game over) · Q/Esc quit.
+
+Run it with `cargo run` (needs a terminal ≥ 46×23).

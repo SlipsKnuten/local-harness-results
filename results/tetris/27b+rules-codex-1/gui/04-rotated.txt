@@ -1,0 +1,45 @@
+
+
+
+
+
+
+
+
+
+
+
+
+T E T R I S               ┌────────────────────┐
+                          │                    │
+Score  000000             │                    │
+Lines  000                │                    │
+Level  0                  │                    │
+                          │                    │
+Next                      │                    │
+  ████                    │                  ██│
+████                      │                ████│
+                          │                ██  │
+                          │                    │
+Controls                  │                    │
+<-  ->   Move             │                    │
+v      Soft drop          │                    │
+^/X    Rotate CW          │                    │
+Z      Rotate CCW         │                    │
+Space  Hard drop          │                    │
+P      Pause              │                    │
+R      Restart            │                  ░░│
+Q      Quit               │                ░░░░│
+                          │                ░░  │
+                          └────────────────────┘
+
+
+
+
+
+
+
+
+
+
+

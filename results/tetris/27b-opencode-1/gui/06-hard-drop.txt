@@ -1,0 +1,46 @@
+┌Tetris  [L1]────────┐┌Stats───────────────────────────┐
+│                ██  ││Score: 0                        │
+│                ██  ││Lines: 0                        │
+│                ████││Level: 1                        │
+│                    ││                                │
+│                    │└────────────────────────────────┘
+│                    │┌Next────────────────────────────┐
+│                    ││    ██                          │
+│                    ││██████                          │
+│                    ││                                │
+│                    ││                                │
+│                    │└────────────────────────────────┘
+│                    │┌Help────────────────────────────┐
+│                    ││Controls                        │
+│                    ││                                │
+│                    ││  Left/Right   move             │
+│                    ││  Up / X       rotate cw        │
+│                    ││  Z            rotate ccw       │
+│                ░░  ││  Down         soft drop        │
+│                ░░  ││  Space        hard drop        │
+│                ░░░░││  P            pause            │
+│                thread 'main' (3491) panicked at src/main.rs:234:17:
+│                    ││  Q / Ctrl-C   quit             │             attempt to subtract with overflow
+│                    ││                                │                                              note: run with `RUST_BACKTRACE=1
+` environment variable to display a backtrace          │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+│                    ││                                │
+└────────────────────┘└────────────────────────────────┘

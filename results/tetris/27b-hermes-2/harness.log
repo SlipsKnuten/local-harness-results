@@ -1,0 +1,22 @@
+
+session_id: 20261001_020142_2d53e1
+Done. A complete, working Tetris in Rust + ratatui.
+
+Location: `/home/gud/bench-harnesses/results/27b-hermes-2/tetris/`
+- Source: `src/main.rs` (~930 lines)
+- Deps: `ratatui 0.30`, `crossterm 0.29` (pulled automatically)
+
+Verified:
+- `cargo build` — clean, 0 warnings; `cargo build --release` also clean (979 KB binary)
+- `cargo test` — 12/12 pass, covering: rotation round-trips (all 7 pieces), wall collisions, line clearing + gravity shift, hard-drop lock-in, scoring/leveling, blocked-spawn game-over, restart, 7-bag randomizer, ghost landing, and pause
+- Launched the binary in a PTY: it entered raw mode and rendered the board (saw the block glyphs)
+
+What I could not verify: driving the keyboard through the harness PTY — the input events report 0 bytes written, so I couldn't type arrows/space interactively. The input path is standard crossterm `event::poll`/`read`, and every key's *logic* is unit-tested; if anything's off at the keyboard level it'd be a keybinding, not game logic. Run it yourself to confirm feel:
+
+    cd /home/gud/bench-harnesses/results/27b-hermes-2/tetris && cargo run --release
+
+Controls: ←/→ move, ↓ soft drop, ↑/x rotate, space hard drop, p pause, r restart (on game over), q/Esc quit.
+
+Features: full 10×20 board, all 7 tetrominoes with a 7-bag randomizer, ghost piece, next-piece preview, score/lines/level with a gravity speed-up per level, wall kicks on rotation, pause and game-over overlays, and clean terminal restore on exit.
+
+One honest caveat worth flagging: rotation uses simple SRS-less wall kicks (offsets 0/±1/±2), and pieces spawn at the top of the visible field rather than in a hidden zone — fine for a casual game, not guideline-perfect. Want me to add SRS kicks or a hidden spawn row?

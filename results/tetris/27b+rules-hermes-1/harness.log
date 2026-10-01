@@ -1,0 +1,18 @@
+
+session_id: 20261001_105857_9e59fc
+Done. Built a complete, working Tetris in Rust with ratatui 0.29 + crossterm 0.28.
+
+**What changed** (new project at `/home/gud/bench-harnesses/results/27b+rules-hermes-1`):
+- `Cargo.toml` — deps: ratatui 0.29, crossterm 0.28
+- `src/game.rs` — pure game logic, no UI deps: 10×20 board, all 7 tetrominoes with 4 rotations each, 7-bag randomizer (seedable SplitMix64), collision/wall-kick rotation, soft/hard drop, gravity tick, line clearing with classic scoring (100/300/500/800 × level), level-up every 10 lines, pause, and game-over on blocked spawn.
+- `src/main.rs` — ratatui terminal UI + main loop: bordered board with per-piece colors, Next-piece panel, Stats panel (score/lines/level), Controls panel with live status, level-scaled gravity, and a 20ms input poll.
+- Controls: ← → move, ↑/x rotate cw, z rotate ccw, ↓ soft drop, space hard drop, p pause, r restart, q quit.
+
+**Verified by real execution:**
+- `cargo build` — zero errors, zero warnings
+- `cargo clippy --all-targets` — zero warnings
+- `cargo fmt --check` — clean
+- `cargo test` — 14/14 pass (bag shuffle, spawn bounds, all rotations, wall collision both sides, rotation kicks, soft/hard drop scoring, line clearing for 1 and 4 rows, level-up, blocked-spawn game over, pause ignores input)
+- Ran the binary in tmux (100×40): confirmed the board, next-piece, stats, and controls all draw and align; sent keys and watched a T rotate, an S hard-drop, score tick up to 12, pause/resume flip the status, restart reset the board, and q quit cleanly with the terminal restored.
+
+To play: `cd /home/gud/bench-harnesses/results/27b+rules-hermes-1 && cargo run` (needs a real interactive terminal — it takes over the screen in raw mode).

@@ -1,0 +1,37 @@
+Done. I built a complete, working Tetris in Rust with ratatui at `tetris/`.
+
+## What's there
+
+```
+tetris/
+├── Cargo.toml          # ratatui 0.29 + crossterm 0.28 + rand 0.9
+├── README.md           # build/run instructions, controls, scoring
+└── src/
+    ├── main.rs         # terminal setup + event/game loop (+ --selftest)
+    ├── game.rs         # rules: state, collision, rotation+kicks, line clear, scoring
+    ├── tetrominoes.rs  # 7 pieces × 4 rotation states
+    └── ui.rs           # board, next-piece, stats, controls, pause/game-over overlays
+```
+
+## Run it
+
+```sh
+cd tetris
+cargo run --release
+```
+
+**Controls:** `←/→` move · `↓` soft drop · `↑` rotate CW · `z` rotate CCW · `Space` hard drop · `p` pause · `r` restart · `q`/`Esc` quit
+
+## Features
+- Classic 10×20 field, all 7 tetrominoes, 4-state rotation with wall kicks
+- **Ghost piece** (dim preview of landing spot) and **next-piece** panel
+- Line clearing (1/2/3/4) with correct gravity compaction; score + level (speeds up every 10 lines)
+- Color-coded pieces; clean terminal teardown even on panic
+
+## Verification
+- **13 unit tests pass** (`cargo test`) covering spawn, movement, wall collision, rotation cycling, hard/soft drop scoring, line clearing + compaction, gravity, pause, and game-over detection
+- **Headless self-test** (`cargo run --release -- --selftest`) scripts real inputs through the key-handler methods → `score=358 lines=1 filled_cells=48`
+- **Live PTY smoke test** confirmed it renders the board/UI and processes move/rotate/hard-drop input across multiple pieces
+- Clean `cargo build` (no warnings) and no real clippy issues
+
+One note: it needs a real TTY (runs in raw mode on the alternate screen) — so it won't "play" in a headless pipe, but runs fine in any normal terminal.

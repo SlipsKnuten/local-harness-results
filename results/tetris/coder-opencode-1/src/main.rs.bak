@@ -1,0 +1,22 @@
+struct Game {
+    field: int = 0;
+}
+
+impl Game {
+    fn bump() {
+        self.field += 1;
+    }
+}
+
+class Game::Bumpable {
+    fn bump2() {
+        game.field += 1;
+    }
+}
+
+fn main() -> int {
+    let g = Game{};
+    g.bump();
+    g.bump2();
+    return g.field;
+}

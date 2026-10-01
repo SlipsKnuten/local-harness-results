@@ -1,0 +1,30 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Configure tools.executionSandbox on Linux or a supported legacy sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+The Tetris game is complete and verified. Here's the summary.
+
+## Done — Tetris in Rust + ratatui
+
+Built at `/home/gud/bench-harnesses/results/27b-qwen-2/tetris/`.
+
+**Run it:**
+```sh
+cd /home/gud/bench-harnesses/results/27b-qwen-2/tetris
+cargo run            # or: cargo run --release
+```
+
+**Controls:** `←`/`→` move · `↓` soft drop · `↑`/`X` rotate CW · `Z` rotate CCW · `Space` hard drop · `P` pause · `R` restart · `Q`/`Esc` quit
+
+**Structure** (822 lines):
+- `src/tetromino.rs` — the 7 pieces, SRS-style box rotation, guideline colors
+- `src/game.rs` — board, collision, 7-bag randomizer, line clearing, scoring/levels, gravity (+ 6 unit tests)
+- `src/main.rs` — event loop, board/sidebar rendering, ghost piece, pause & game-over overlays
+- `Cargo.toml` (ratatui 0.30, crossterm 0.29), `README.md`
+
+**Features:** SRS-style rotation with wall kicks, ghost piece, score + in-session high score, level/lines with speed-up (10 lines/level), next-piece preview, pause, and game-over/restart.
+
+**Verification:**
+- ✅ `cargo build` (debug) and `cargo build --release` — no errors
+- ✅ `cargo clippy --all-targets` — clean, zero warnings
+- ✅ `cargo test` — **6/6 passed** (rotation stays in box, out-of-bounds rejected, single-line clear + scoring, hard-drop completing two rows, 7-bag deals all seven pieces)
+- ⚠️ I couldn't fully drive the live TUI here: this is a headless box with no real TTY, so `enable_raw_mode()` (piped stdin) and the cursor-position query (under `script`'s pseudo-TTY) both fail. The binary surfaced those errors cleanly (no panic) — that's an environment limitation, not a defect. It will run normally in a real terminal.
+
+One note on correctness of the headless check: everything except the actual on-screen paint is verified by the passing logic tests; the rendering uses standard ratatui patterns compiled against the real 0.30 API.
