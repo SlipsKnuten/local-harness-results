@@ -88,6 +88,20 @@ mirroring their Qwen3.8-27B Q5 config except quant, CUDA and the speed stack
 
 Same single failure as their leaders (`kiem_mini-testwrite`).
 
+## Terminal-Bench 2.1 (official harness: Harbor)
+
+`results/terminal-bench-2.1/`. 89 tasks, harness defaults (no instruction file), 27b setup
+above, Harbor 0.23.0.
+
+- **Parallel run — NOT representative** (`parallel-3slots-NOT-representative/`): 3 server slots
+  x 64k context, 3 tasks at a time, so each agent ran at ~1/3 of single-user speed while the
+  task time limits are wall-clock. opencode: **46/89 solved (51.7%)**; 20 wrong, 21 time-limit,
+  2 not run (task image without Node.js). Codex: stopped early. Kept for reference only.
+- **Sequential run — in progress** (`run-seq.sh`, `start-tb-server-seq.sh`): 1 slot, full 262k
+  context, 1 task at a time, i.e. the real single-user setup. opencode, then Codex.
+
+For scale: Qwen reports 73.0% for Qwen3.8-27B (Claude Code harness, xhigh thinking).
+
 ## Take-aways
 
 - The harness and its instructions moved quality far more than anything else we tried on a

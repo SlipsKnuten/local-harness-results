@@ -1,0 +1,10 @@
+model = "local"
+model_provider = "tbserver"
+model_reasoning_effort = "medium"
+model_context_window = 65536
+
+[model_providers.tbserver]
+name = "local llama.cpp (RTX 5090)"
+base_url = "http://172.17.0.1:8090/v1"
+env_key = "TB_LOCAL_KEY"
+wire_api = "responses"

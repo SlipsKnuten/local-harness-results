@@ -1,0 +1,122 @@
+[
+ {
+  "task": "cobol-modernization",
+  "outcome": "time_limit",
+  "reward": 0.0,
+  "exception": "AgentTimeoutError",
+  "started_at": "2026-10-02T16:04:53.688158Z",
+  "finished_at": "2026-10-02T16:20:58.366185Z"
+ },
+ {
+  "task": "constraints-scheduling",
+  "outcome": "solved",
+  "reward": 1.0,
+  "exception": null,
+  "started_at": "2026-10-02T15:20:46.729897Z",
+  "finished_at": "2026-10-02T15:24:39.142258Z"
+ },
+ {
+  "task": "crack-7z-hash",
+  "outcome": "solved",
+  "reward": 1.0,
+  "exception": null,
+  "started_at": "2026-10-02T15:43:08.862451Z",
+  "finished_at": "2026-10-02T15:46:47.142591Z"
+ },
+ {
+  "task": "dna-assembly",
+  "outcome": "wrong",
+  "reward": 0.0,
+  "exception": null,
+  "started_at": "2026-10-02T15:56:18.926695Z",
+  "finished_at": "2026-10-02T16:08:20.382854Z"
+ },
+ {
+  "task": "extract-moves-from-video",
+  "outcome": "not_run_environment",
+  "reward": 0.0,
+  "exception": "NonZeroAgentExitCodeError",
+  "started_at": "2026-10-02T15:20:46.776430Z",
+  "finished_at": "2026-10-02T15:30:27.652148Z"
+ },
+ {
+  "task": "feal-linear-cryptanalysis",
+  "outcome": "solved",
+  "reward": 1.0,
+  "exception": null,
+  "started_at": "2026-10-02T15:20:46.758305Z",
+  "finished_at": "2026-10-02T15:43:03.270372Z"
+ },
+ {
+  "task": "install-windows-3.11",
+  "outcome": "not_run_environment",
+  "reward": 0.0,
+  "exception": "NonZeroAgentExitCodeError",
+  "started_at": "2026-10-02T15:30:27.659851Z",
+  "finished_at": "2026-10-02T15:41:08.321480Z"
+ },
+ {
+  "task": "modernize-scientific-stack",
+  "outcome": "solved",
+  "reward": 1.0,
+  "exception": null,
+  "started_at": "2026-10-02T15:40:59.201485Z",
+  "finished_at": "2026-10-02T15:43:08.857644Z"
+ },
+ {
+  "task": "overfull-hbox",
+  "outcome": "solved",
+  "reward": 1.0,
+  "exception": null,
+  "started_at": "2026-10-02T15:47:03.930909Z",
+  "finished_at": "2026-10-02T15:56:18.920745Z"
+ },
+ {
+  "task": "password-recovery",
+  "outcome": "solved",
+  "reward": 1.0,
+  "exception": null,
+  "started_at": "2026-10-02T15:41:08.326561Z",
+  "finished_at": "2026-10-02T15:51:32.623700Z"
+ },
+ {
+  "task": "prove-plus-comm",
+  "outcome": "solved",
+  "reward": 1.0,
+  "exception": null,
+  "started_at": "2026-10-02T16:08:20.388220Z",
+  "finished_at": "2026-10-02T16:09:55.485055Z"
+ },
+ {
+  "task": "qemu-startup",
+  "outcome": "not_run_environment",
+  "reward": null,
+  "exception": "NonZeroAgentExitCodeError",
+  "started_at": "2026-10-02T15:46:47.147476Z",
+  "finished_at": "2026-10-02T15:47:03.925594Z"
+ },
+ {
+  "task": "sam-cell-seg",
+  "outcome": "not_run_environment",
+  "reward": 1.0,
+  "exception": "NonZeroAgentExitCodeError",
+  "started_at": "2026-10-02T15:43:03.277480Z",
+  "finished_at": "2026-10-02T16:07:07.238389Z"
+ },
+ {
+  "task": "sanitize-git-repo",
+  "outcome": "wrong",
+  "reward": 0.0,
+  "exception": null,
+  "started_at": "2026-10-02T15:51:32.629403Z",
+  "finished_at": "2026-10-02T16:04:53.682557Z"
+ },
+ {
+  "task": "tune-mjcf",
+  "outcome": "time_limit",
+  "reward": 0.0,
+  "exception": "AgentTimeoutError",
+  "started_at": "2026-10-02T15:24:39.148588Z",
+  "finished_at": "2026-10-02T15:40:59.193973Z"
+ }
+]
